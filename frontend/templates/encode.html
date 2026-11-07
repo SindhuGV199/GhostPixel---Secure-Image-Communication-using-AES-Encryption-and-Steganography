@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Encode Secret Message – GhostPixel{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-cyan" style="font-size: 0.75rem; letter-spacing: 1px;">SENDER PORTAL</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">AES-256-GCM Authenticated Encryption &amp; LSB Concealment</span>
+    </div>
+    <h1 style="font-size: 2.2rem; font-weight: 800;">Sender Portal – Encode &amp; Conceal Message</h1>
+    <p style="color: var(--text-secondary);">Encrypt your confidential message, verify carrier image capacity, and generate an independent stego PNG image to share with your intended receiver.</p>
+</div>
+
+<!-- Error Alert Notification -->
+<div id="encode-error" class="alert alert-danger hidden"></div>
+
+<div class="grid-2">
+    <!-- Left Column: Inputs Form -->
+    <div>
+        <form id="encode-form">
+            <!-- Step 1: Secret Message -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-cyan" style="width: 24px; height: 24px; padding: 0; justify-content: center;">1</span>
+                        <span>Secret Message</span>
+                    </div>
+                    <span id="char-count" style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);">0 characters</span>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Quick Presets:</span>
+                        <button type="button" class="btn btn-sm btn-secondary btn-preset-msg" data-preset="brief">Mission Brief</button>
+                        <button type="button" class="btn btn-sm btn-secondary btn-preset-msg" data-preset="geo">Coordinates</button>
+                        <button type="button" class="btn btn-sm btn-secondary btn-preset-msg" data-preset="unicode">Unicode & Emojis</button>
+                    </div>
+                    <textarea id="secret-message" class="form-control" placeholder="Enter confidential message to encrypt and conceal..." required></textarea>
+                </div>
+            </div>
+
+            <!-- Step 2: Password & Key Derivation -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-cyan" style="width: 24px; height: 24px; padding: 0; justify-content: center;">2</span>
+                        <span>Encryption Password</span>
+                    </div>
+                    <span class="badge badge-purple" style="font-size: 0.7rem;">PBKDF2-HMAC-SHA256</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="encode-password">
+                        <span>Secret Passphrase</span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">Used to derive 256-bit AES key</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input type="password" id="encode-password" class="form-control" placeholder="Enter a strong passphrase..." required autocomplete="new-password">
+                        <button type="button" class="input-btn-toggle" data-target="encode-password" title="Show/Hide Password">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Password Strength Meter -->
+                    <div class="strength-meter">
+                        <div class="strength-bar-bg">
+                            <div id="strength-bar-fill" class="strength-bar-fill"></div>
+                        </div>
+                        <div class="strength-info">
+                            <span id="strength-text">Strength: None</span>
+                            <span>Min 8 chars, uppercase, digits, symbols</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Cover Image Upload -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-cyan" style="width: 24px; height: 24px; padding: 0; justify-content: center;">3</span>
+                        <span>Cover Carrier Image</span>
+                    </div>
+                    <span class="badge badge-cyan" style="font-size: 0.7rem;">PNG or BMP</span>
+                </div>
+
+                <!-- Dropzone -->
+                <div id="cover-dropzone" class="dropzone">
+                    <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <div class="dropzone-text">Click or drag & drop cover image here</div>
+                    <div class="dropzone-hint">Supports lossless PNG and BMP formats (Max 32 MB)</div>
+                    <input type="file" id="cover-image-input" accept=".png, .bmp, image/png, image/bmp" style="display: none;">
+                </div>
+
+                <!-- Quick Sample Selector -->
+                <div style="margin-top: 1rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Or test with high-resolution sample cover:</div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm btn-secondary btn-select-sample" data-sample-url="{{ url_for('static', filename='images/sample_cyber_circuit.png') }}">
+                            Cyber Circuit (500x400)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary btn-select-sample" data-sample-url="{{ url_for('static', filename='images/sample_nebula.png') }}">
+                            Nebula Gradient (450x450)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary btn-select-sample" data-sample-url="{{ url_for('static', filename='images/sample_shield.png') }}">
+                            Security Shield (400x400)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image Preview Container -->
+                <div id="cover-preview-container" class="image-preview-container hidden">
+                    <img id="cover-preview" class="image-preview" alt="Cover Preview">
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="btn-encode" class="btn btn-primary btn-lg" style="width: 100%;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Encrypt & Embed Payload</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Right Column: Capacity Meter & Cryptographic Inspector -->
+    <div>
+        <!-- Capacity Diagnostics Panel -->
+        <div id="capacity-meter" class="card mb-3 hidden">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <span>Image Steganography Capacity</span>
+                </div>
+                <span id="cap-utilization" class="badge badge-cyan">0%</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-header">
+                    <span>Capacity Utilization:</span>
+                    <span id="cap-required">0 bytes</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="cap-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Capacity Metadata Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; font-size: 0.85rem;">
+                <div style="background: rgba(13, 19, 34, 0.5); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">DIMENSIONS</div>
+                    <div id="cap-dimensions" style="font-weight: 600; color: var(--text-primary);">-</div>
+                </div>
+                <div style="background: rgba(13, 19, 34, 0.5); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">FORMAT / SIZE</div>
+                    <div style="font-weight: 600; color: var(--text-primary);"><span id="cap-format">-</span> (<span id="cap-file-size">-</span>)</div>
+                </div>
+                <div style="background: rgba(13, 19, 34, 0.5); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">TOTAL USABLE CAPACITY</div>
+                    <div id="cap-usable" style="font-weight: 600; color: var(--accent-cyan);">-</div>
+                </div>
+                <div style="background: rgba(13, 19, 34, 0.5); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">AVAILABLE REMAINING</div>
+                    <div id="cap-available" style="font-weight: 600; color: var(--accent-green);">-</div>
+                </div>
+            </div>
+            
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem;">
+                * Calculated using 1 LSB per RGB channel: <code>(Width × Height × 3) / 8</code> bytes. Includes 84 bytes metadata (magic, length, SHA-256 hash, salt, nonce, tag).
+            </p>
+        </div>
+
+        <!-- Encoding Results Panel (Hidden until successfully generated) -->
+        <div id="encode-results" class="card hidden" style="border-color: var(--accent-green); box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);">
+            <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span class="badge badge-green" style="font-size: 0.75rem;">ENCODING SUCCESSFUL</span>
+                    <span class="badge badge-cyan">Lossless PNG Carrier</span>
+                </div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #a7f3d0; line-height: 1.4;">
+                    Your secure image has been generated successfully. Download and share this image with the intended receiver.
+                </div>
+            </div>
+
+            <!-- Comparison & Steganalysis Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="comparison-card">
+                    <span class="badge badge-cyan">1. Original Cover</span>
+                    <img id="res-cover-img" alt="Original Cover">
+                </div>
+                <div class="comparison-card">
+                    <span class="badge badge-green">2. Stego Carrier</span>
+                    <img id="res-stego-img" alt="Stego Image">
+                </div>
+                <div class="comparison-card" style="border-color: rgba(245, 158, 11, 0.4);">
+                    <span class="badge badge-amber" title="Shows exact pixel positions altered by LSB modulation">3. Difference Map (255x)</span>
+                    <img id="res-diff-img" alt="Amplified Difference Map">
+                </div>
+            </div>
+
+            <!-- Prominent Download Stego Image Button -->
+            <div style="margin-bottom: 1.5rem;">
+                <a id="btn-download-stego" href="#" class="btn btn-primary btn-lg" style="width: 100%; box-shadow: 0 4px 20px rgba(6, 182, 212, 0.5); font-size: 1.15rem; padding: 1rem 1.5rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Download Stego Image (.png)</span>
+                </a>
+            </div>
+
+            <!-- Real-World Sharing Instructions Box -->
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent-cyan); font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>How to Share with Your Receiver:</span>
+                </div>
+                <ol style="font-size: 0.84rem; color: var(--text-secondary); padding-left: 1.2rem; line-height: 1.6;">
+                    <li>Click <strong>Download Stego Image</strong> above to save the lossless PNG carrier to your device.</li>
+                    <li>Transmit the PNG file to your receiver via Email, Telegram (as Document), WhatsApp (as Document), AirDrop, or USB.</li>
+                    <li><strong>Important:</strong> Do not send as a compressed photo on social apps, because lossy JPEG compression will erase the hidden LSB bits.</li>
+                    <li>Communicate your passphrase securely out-of-band to the receiver.</li>
+                    <li>The receiver opens the <strong>Receiver Portal (/decode)</strong> on their device to extract and decrypt.</li>
+                </ol>
+            </div>
+
+            <!-- Measured Performance Badges -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1.25rem;">
+                <div style="background: #060910; padding: 0.5rem; border-radius: var(--radius-sm); text-align: center; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">PSNR</div>
+                    <div id="res-psnr" style="font-weight: 700; color: var(--accent-cyan); font-size: 0.95rem;">-</div>
+                </div>
+                <div style="background: #060910; padding: 0.5rem; border-radius: var(--radius-sm); text-align: center; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">SSIM</div>
+                    <div id="res-ssim" style="font-weight: 700; color: var(--accent-purple); font-size: 0.95rem;">-</div>
+                </div>
+                <div style="background: #060910; padding: 0.5rem; border-radius: var(--radius-sm); text-align: center; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">TOTAL TIME</div>
+                    <div id="res-time-total" style="font-weight: 700; color: var(--accent-green); font-size: 0.95rem;">-</div>
+                </div>
+            </div>
+
+            <!-- Cryptographic Inspector -->
+            <div style="background: rgba(13, 19, 34, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--accent-cyan);">
+                    Cryptographic Payload Parameters (Embedded in Image)
+                </div>
+                <div class="form-group mb-2">
+                    <div class="code-label">Salt (16 Bytes / Hex)</div>
+                    <div id="res-crypto-salt" class="code-block" style="font-size: 0.78rem;">-</div>
+                </div>
+                <div class="form-group mb-2">
+                    <div class="code-label">Nonce / IV (12 Bytes / Hex)</div>
+                    <div id="res-crypto-nonce" class="code-block" style="font-size: 0.78rem;">-</div>
+                </div>
+                <div class="form-group mb-2">
+                    <div class="code-label">AES-GCM Auth Tag (16 Bytes / Hex)</div>
+                    <div id="res-crypto-tag" class="code-block" style="font-size: 0.78rem;">-</div>
+                </div>
+                <div class="form-group mb-2">
+                    <div class="code-label">SHA-256 Payload Digest (32 Bytes / Hex)</div>
+                    <div id="res-crypto-hash" class="code-block" style="font-size: 0.78rem; color: #a78bfa;">-</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    <span>AES Enc: <span id="res-time-aes">-</span></span>
+                    <span>SHA Gen: <span id="res-time-sha">-</span></span>
+                    <span>LSB Embed: <span id="res-time-lsb">-</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

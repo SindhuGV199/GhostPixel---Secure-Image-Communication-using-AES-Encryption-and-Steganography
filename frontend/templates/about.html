@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}About GhostPixel – Project & Architecture{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-cyan">Project Overview</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Engineering Specifications & Technologies</span>
+    </div>
+    <h1 style="font-size: 2.2rem; font-weight: 800;">About GhostPixel</h1>
+    <p style="color: var(--text-secondary);">An advanced, end-to-end cryptographic covert communications platform combining authenticated AES encryption, payload integrity hashing, and spatial LSB steganography.</p>
+</div>
+
+<div class="grid-2 mb-3">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Project Mission</h3>
+        </div>
+        <p style="font-size: 0.92rem; margin-bottom: 1rem;">
+            In modern adversarial network environments, standard encryption alone is often insufficient. While strong ciphers prevent adversaries from reading plaintext, the mere presence of encrypted traffic draws suspicion and triggers censorship or interception.
+        </p>
+        <p style="font-size: 0.92rem;">
+            <strong>GhostPixel</strong> solves this dual challenge by pairing <em>cryptography</em> (protecting secrecy) with <em>steganography</em> (protecting privacy by concealing the very existence of the message). An adversary intercepting an innocent image carrier has no statistical or visual indication that a military-grade encrypted message is embedded inside.
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Technical Specifications</h3>
+        </div>
+        <ul style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.8; list-style: none;">
+            <li><strong style="color: var(--accent-cyan);">Encryption Cipher:</strong> AES-256-GCM (Galois/Counter Mode)</li>
+            <li><strong style="color: var(--accent-purple);">Key Derivation:</strong> PBKDF2-HMAC-SHA256 (100,000 rounds)</li>
+            <li><strong style="color: var(--accent-green);">Integrity Hash:</strong> SHA-256 (256-bit cryptographic digest)</li>
+            <li><strong style="color: var(--accent-amber);">Steganography:</strong> Spatial RGB 1-LSB sequential matrix modulation</li>
+            <li><strong style="color: #60a5fa;">Supported Inputs:</strong> Lossless PNG, 24-bit TrueColor BMP</li>
+            <li><strong style="color: #f472b6;">Output Format:</strong> Lossless PNG (to preserve LSB data)</li>
+            <li><strong style="color: #34d399;">Audit Database:</strong> Embedded SQLite 3</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">Complete Technology Stack</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(13, 19, 34, 0.5); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.25rem;">Backend Engine</div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Python 3.12, Flask, RESTful endpoints, and modular security service classes.</p>
+        </div>
+        <div style="background: rgba(13, 19, 34, 0.5); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; color: var(--accent-purple); margin-bottom: 0.25rem;">Cryptographic Core</div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Python <code>cryptography</code> library with hardware-accelerated AES-GCM and PBKDF2.</p>
+        </div>
+        <div style="background: rgba(13, 19, 34, 0.5); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; color: var(--accent-green); margin-bottom: 0.25rem;">Image Processing</div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Pillow (PIL) & NumPy for high-throughput vectorized bit packing and PSNR/SSIM evaluation.</p>
+        </div>
+        <div style="background: rgba(13, 19, 34, 0.5); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; color: var(--accent-amber); margin-bottom: 0.25rem;">Frontend Experience</div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary);">Responsive HTML5, Cyberpunk Dark CSS3, dynamic JavaScript, and real-time feedback meters.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

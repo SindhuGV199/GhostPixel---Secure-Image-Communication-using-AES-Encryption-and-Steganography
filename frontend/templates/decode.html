@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Decode Hidden Message – GhostPixel{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-purple" style="font-size: 0.75rem; letter-spacing: 1px;">RECEIVER PORTAL</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Independent LSB Extraction &bull; SHA-256 Verification &bull; AES-256-GCM Decryption</span>
+    </div>
+    <h1 style="font-size: 2.2rem; font-weight: 800;">Receiver Portal – Extract &amp; Decrypt Message</h1>
+    <p style="color: var(--text-secondary);">Open this portal independently on your device. Upload the carrier PNG image you received, verify SHA-256 payload integrity, and enter your passphrase to decrypt.</p>
+</div>
+
+<!-- Global Error Notification -->
+<div id="decode-error" class="alert alert-danger hidden"></div>
+
+<div class="grid-2">
+    <!-- Left Column: Upload & Stego Extraction -->
+    <div>
+        <form id="decode-form">
+            <!-- Step 1: Upload Stego Image -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-purple" style="width: 24px; height: 24px; padding: 0; justify-content: center;">1</span>
+                        <span>Upload Stego Image</span>
+                    </div>
+                    <span class="badge badge-cyan" style="font-size: 0.7rem;">PNG / BMP Carrier</span>
+                </div>
+
+                <div id="stego-dropzone" class="dropzone">
+                    <svg class="dropzone-icon" style="color: var(--accent-purple);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div class="dropzone-text">Click or drag & drop stego image here</div>
+                    <div class="dropzone-hint">Upload the carrier image containing the hidden GhostPixel payload</div>
+                    <input type="file" id="stego-image-input" accept=".png, .bmp, image/png, image/bmp" style="display: none;">
+                </div>
+
+                <!-- Stego Preview Container -->
+                <div id="stego-preview-container" class="image-preview-container hidden">
+                    <img id="stego-preview" class="image-preview" alt="Stego Image Preview">
+                </div>
+
+                <!-- Action: Extract & Verify Button -->
+                <div style="margin-top: 1.25rem;">
+                    <button type="button" id="btn-extract-verify" class="btn btn-primary" style="width: 100%;" disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span>Extract Payload & Verify SHA-256 Integrity</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Password Decryption Section (Shown only after extraction) -->
+            <div id="decode-password-section" class="card mb-3 hidden" style="border-color: var(--accent-cyan);">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-cyan" style="width: 24px; height: 24px; padding: 0; justify-content: center;">2</span>
+                        <span>Enter Decryption Password</span>
+                    </div>
+                    <span class="badge badge-purple" style="font-size: 0.7rem;">AES-256-GCM</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="decode-password">
+                        <span>Secret Passphrase</span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">Must match sender's password</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input type="password" id="decode-password" class="form-control" placeholder="Enter passphrase to decrypt ciphertext..." required autocomplete="current-password">
+                        <button type="button" class="input-btn-toggle" data-target="decode-password" title="Show/Hide Password">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" id="btn-decrypt" class="btn btn-primary btn-lg" style="width: 100%;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    <span>Authenticate & Decrypt Message</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right Column: Integrity Diagnostics & Decrypted Message Result -->
+    <div>
+        <!-- Integrity Verification Card -->
+        <div id="integrity-verification-card" class="card mb-3 hidden">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Payload Integrity Verification</span>
+                </div>
+                <span id="integrity-status-badge" class="badge badge-green">VERIFIED</span>
+            </div>
+
+            <!-- Status banner -->
+            <div id="integrity-status-msg" class="alert alert-success"></div>
+
+            <!-- Hash Equality Diagnostics -->
+            <div class="form-group mb-2">
+                <div class="code-label">Calculated SHA-256 Digest (Freshly Computed)</div>
+                <div id="calc-sha-hash" class="code-block" style="font-size: 0.78rem; color: #38bdf8;">-</div>
+            </div>
+            <div class="form-group mb-3">
+                <div class="code-label">Stored SHA-256 Digest (From Stego Header)</div>
+                <div id="stored-sha-hash" class="code-block" style="font-size: 0.78rem; color: #a78bfa;">-</div>
+            </div>
+
+            <!-- Extracted Metadata -->
+            <div style="background: rgba(13, 19, 34, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; font-size: 0.82rem;">
+                <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">Extracted Cryptographic Parameters</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div><span style="color: var(--text-muted);">Salt (Hex):</span> <span id="meta-salt" style="font-family: var(--font-mono); color: #38bdf8;">-</span></div>
+                    <div><span style="color: var(--text-muted);">Nonce (Hex):</span> <span id="meta-nonce" style="font-family: var(--font-mono); color: #38bdf8;">-</span></div>
+                    <div><span style="color: var(--text-muted);">Tag (Hex):</span> <span id="meta-tag" style="font-family: var(--font-mono); color: #38bdf8;">-</span></div>
+                    <div><span style="color: var(--text-muted);">Ciphertext Size:</span> <span id="meta-ciphertext-size" style="font-weight: 600;">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decrypted Result Card (Shown on successful decryption) -->
+        <div id="decrypt-result-card" class="card hidden" style="border-color: var(--accent-green); box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);">
+            <div class="card-header">
+                <div class="card-title" style="color: var(--accent-green);">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Message Successfully Recovered!</span>
+                </div>
+                <span class="badge badge-green">AES-256-GCM Tag Verified</span>
+            </div>
+
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <label class="form-label" style="margin-bottom: 0;">Original Secret Message</label>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Decrypted in <strong id="decryption-time" style="color: var(--accent-cyan);">-</strong></span>
+                </div>
+                <textarea id="recovered-message" class="form-control" style="font-family: var(--font-mono); background: #050811; color: #a7f3d0; border-color: rgba(16, 185, 129, 0.4);" readonly rows="6"></textarea>
+            </div>
+
+            <button type="button" id="btn-copy-recovered" class="btn btn-secondary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy Message to Clipboard</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,4 @@
+"""
+GhostPixel Automated Test Suite
+"""
+

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GhostPixel – Secure Image Communication{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <svg class="nav-brand-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="36" height="36" rx="8" fill="#0D1322" stroke="#3B82F6" stroke-width="1.5"/>
+                    <path d="M18 7L28 11.5V19C28 24.8 23.7 30.1 18 31.5C12.3 30.1 8 24.8 8 19V11.5L18 7Z" fill="url(#shield-grad)" stroke="#06B6D4" stroke-width="1.2"/>
+                    <!-- Pixel lock matrix -->
+                    <rect x="15" y="17" width="6" height="7" rx="1.5" fill="#F8FAFC"/>
+                    <path d="M16 17V15C16 13.9 16.9 13 18 13C19.1 13 20 13.9 20 15V17" stroke="#F8FAFC" stroke-width="1.5"/>
+                    <!-- Matrix micro-dots -->
+                    <circle cx="12" cy="14" r="1" fill="#06B6D4"/>
+                    <circle cx="24" cy="14" r="1" fill="#8B5CF6"/>
+                    <circle cx="12" cy="22" r="1" fill="#8B5CF6"/>
+                    <circle cx="24" cy="22" r="1" fill="#06B6D4"/>
+                    <defs>
+                        <linearGradient id="shield-grad" x1="8" y1="7" x2="28" y2="31.5" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#1E293B"/>
+                            <stop offset="1" stop-color="#0F172A"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span>Ghost<span class="brand-highlight">Pixel</span></span>
+            </a>
+
+            <ul class="nav-links">
+                <li><a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}">Dashboard</a></li>
+                <li><a href="{{ url_for('encode_page') }}" class="nav-link {% if request.path == '/encode' %}active{% endif %}">Sender Portal</a></li>
+                <li><a href="{{ url_for('decode_page') }}" class="nav-link {% if request.path == '/decode' %}active{% endif %}">Receiver Portal</a></li>
+                <li><a href="{{ url_for('performance_page') }}" class="nav-link {% if request.path == '/performance' %}active{% endif %}">Performance</a></li>
+                <li><a href="{{ url_for('security_page') }}" class="nav-link {% if request.path == '/security' %}active{% endif %}">Security Info</a></li>
+                <li><a href="{{ url_for('about_page') }}" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a></li>
+            </ul>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a href="{{ url_for('encode_page') }}" class="btn btn-sm btn-primary">Encrypt &amp; Hide</a>
+                <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Body -->
+    <main class="main-content">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Global Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div>
+                <p><strong>GhostPixel</strong> &copy; 2026 – Advanced Cryptographic Image Steganography System.</p>
+                <p style="font-size: 0.78rem; margin-top: 0.25rem;">Built with Python, Flask, AES-256-GCM, PBKDF2-HMAC-SHA256, and LSB Matrix Modulation.</p>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span class="badge badge-cyan">AES-256-GCM</span>
+                <span class="badge badge-purple">SHA-256</span>
+                <span class="badge badge-green">RGB LSB</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Client Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>
+

@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+.venv/
+venv/
+
+# Environment Variables
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# GhostPixel Temporary Uploads & Database
+uploads/covers/*
+!uploads/covers/.gitkeep
+uploads/stego/*
+!uploads/stego/.gitkeep
+uploads/diffs/*
+!uploads/diffs/.gitkeep
+uploads/*.db
+uploads/*.sqlite
+uploads/*.sqlite3
+*.db
+*.sqlite
+
+# OS Generated
+.DS_Store
+Thumbs.db

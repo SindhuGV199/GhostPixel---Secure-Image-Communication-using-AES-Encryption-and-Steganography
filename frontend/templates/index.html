@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}GhostPixel – Secure Image Communication Platform{% endblock %}
+
+{% block content %}
+<div class="hero-section text-center" style="padding: 2.5rem 0 3.5rem;">
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-full); padding: 0.35rem 1rem; margin-bottom: 1.25rem;">
+        <span class="badge badge-cyan" style="font-size: 0.7rem;">Cybersecurity Defense</span>
+        <span style="font-size: 0.85rem; color: #94a3b8;">Military-Grade Image Steganography & Authenticated Encryption</span>
+    </div>
+
+    <h1 style="font-size: 3rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem;">
+        Covert Communication via <span style="background: var(--gradient-cyber); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GhostPixel</span>
+    </h1>
+    <p style="font-size: 1.15rem; max-width: 760px; margin: 0 auto 2.5rem; color: var(--text-secondary);">
+        Combine authenticated <strong>AES-256-GCM</strong> encryption, <strong>SHA-256</strong> integrity hashing, and <strong>LSB image steganography</strong> to conceal confidential messages inside ordinary images with imperceptible visual distortion.
+    </p>
+
+    <!-- Two Primary Action Cards -->
+    <div class="grid-2" style="max-width: 950px; margin: 0 auto 3rem;">
+        <!-- Card 1: SENDER PORTAL -->
+        <div class="card" style="text-align: left; border-top: 4px solid var(--accent-cyan); background: rgba(13, 19, 34, 0.95); box-shadow: 0 8px 30px rgba(6, 182, 212, 0.15);">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: rgba(6, 182, 212, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div>
+                    <span class="badge badge-cyan" style="font-size: 0.72rem; letter-spacing: 1px;">SENDER PORTAL</span>
+                    <h3 style="font-size: 1.35rem; margin-top: 0.2rem;">Encode Secret Message</h3>
+                </div>
+            </div>
+            <p style="font-size: 0.95rem; margin-bottom: 1.5rem; color: #cbd5e1;">
+                Encrypt your confidential message and hide it inside an ordinary image.
+            </p>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; background: rgba(6, 182, 212, 0.05); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-cyan);">
+                <strong>Sender Process:</strong> Input message & password &rarr; AES-256-GCM encrypts &rarr; SHA-256 integrity hash &rarr; LSB embedding &rarr; Download stego PNG image to send to the receiver.
+            </div>
+            <a href="{{ url_for('encode_page') }}" class="btn btn-primary btn-lg" style="width: 100%;">
+                <span>Start Encoding</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+        </div>
+
+        <!-- Card 2: RECEIVER PORTAL -->
+        <div class="card" style="text-align: left; border-top: 4px solid var(--accent-purple); background: rgba(13, 19, 34, 0.95); box-shadow: 0 8px 30px rgba(139, 92, 246, 0.15);">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-purple);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                </div>
+                <div>
+                    <span class="badge badge-purple" style="font-size: 0.72rem; letter-spacing: 1px;">RECEIVER PORTAL</span>
+                    <h3 style="font-size: 1.35rem; margin-top: 0.2rem;">Decode Hidden Message</h3>
+                </div>
+            </div>
+            <p style="font-size: 0.95rem; margin-bottom: 1.5rem; color: #cbd5e1;">
+                Upload a received stego image and recover its hidden message.
+            </p>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; background: rgba(139, 92, 246, 0.05); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-purple);">
+                <strong>Receiver Process:</strong> Upload PNG file received from sender &rarr; Extract hidden payload &rarr; Verify SHA-256 integrity &rarr; Enter password &rarr; Recover original plaintext.
+            </div>
+            <a href="{{ url_for('decode_page') }}" class="btn btn-secondary btn-lg" style="width: 100%; border-color: var(--accent-purple); color: #c084fc;">
+                <span>Start Decoding</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Independent Communication Notice Banner -->
+    <div style="max-width: 950px; margin: 0 auto 3rem; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; text-align: left;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="color: var(--accent-cyan); margin-top: 0.2rem;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            <div>
+                <h4 style="font-size: 1rem; color: var(--text-primary); margin-bottom: 0.35rem;">Real-World Sender-to-Receiver Communication</h4>
+                <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5;">
+                    The sender and receiver operate <strong>completely independently</strong> across different devices, browsers, and networks. The downloaded PNG image is 100% self-contained—it carries the encrypted payload, salt, nonce, authentication tag, and SHA-256 hash. The receiver only needs the <strong>original uncompressed PNG file</strong> and the <strong>correct passphrase</strong> shared securely out-of-band.
+                </p>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--accent-amber);">
+                    💡 <strong>File Sharing Tip:</strong> When sharing via messaging apps (e.g. WhatsApp, Telegram), send as an <em>uncompressed Document / File</em> rather than a photo, so the platform does not recompress the image into lossy JPEG.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real System Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(6, 182, 212, 0.12); color: var(--accent-cyan);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.total_encodes }}</div>
+            <div class="stat-label">Total Messages Encoded</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.12); color: var(--accent-purple);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.total_decodes }}</div>
+            <div class="stat-label">Total Messages Decoded</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.avg_psnr_db }} dB</div>
+            <div class="stat-label">Avg Stego PSNR (Fidelity)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--accent-amber);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.avg_time_ms }} ms</div>
+            <div class="stat-label">Avg Execution Latency</div>
+        </div>
+    </div>
+</div>
+
+<!-- Three Security Layers Section -->
+<div class="card mb-3" style="margin-top: 2rem;">
+    <div class="card-header">
+        <div class="card-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>The Three Pillars of GhostPixel Security</span>
+        </div>
+        <span class="badge badge-cyan">Defense-in-Depth</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+        <!-- Layer 1 -->
+        <div style="background: rgba(13, 19, 34, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h4 style="color: var(--accent-cyan); font-size: 1.05rem;">1. AES-256-GCM</h4>
+                <span class="badge badge-cyan">Confidentiality</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">
+                Authenticated encryption standard using a 256-bit key derived via <strong>PBKDF2-HMAC-SHA256</strong> (100,000 rounds) with cryptographically random 16-byte salt and 12-byte nonce. Guarantees unauthorized parties cannot read the secret even if extracted.
+            </p>
+        </div>
+
+        <!-- Layer 2 -->
+        <div style="background: rgba(13, 19, 34, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h4 style="color: var(--accent-purple); font-size: 1.05rem;">2. SHA-256 Hashing</h4>
+                <span class="badge badge-purple">Integrity</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">
+                Calculates a 256-bit cryptographic digest of the encrypted payload prior to embedding. Extracted data is re-hashed and verified with constant-time equality checks to detect tampering, corruption, or pixel alteration before decryption.
+            </p>
+        </div>
+
+        <!-- Layer 3 -->
+        <div style="background: rgba(13, 19, 34, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h4 style="color: var(--accent-green); font-size: 1.05rem;">3. RGB LSB Steganography</h4>
+                <span class="badge badge-green">Concealment</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">
+                Hides the structured binary packet inside the least significant bits of Red, Green, and Blue pixel channels. Produces a lossless PNG image that appears virtually indistinguishable from the carrier image (PSNR &gt; 65 dB, SSIM &gt; 0.999).
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Workflow Visualization Diagram -->
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="card-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span>Cryptographic Workflow Architecture</span>
+        </div>
+        <span class="badge badge-purple">End-to-End Pipeline</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; text-align: center;">
+            <div style="background: #060910; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">1. Plaintext & Pass</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Secret message input</div>
+            </div>
+            <div style="background: #060910; border: 1px solid var(--accent-cyan); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-weight: 700; color: var(--accent-cyan); font-size: 0.9rem;">2. AES-256-GCM</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Salt + Nonce + Tag</div>
+            </div>
+            <div style="background: #060910; border: 1px solid var(--accent-purple); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-weight: 700; color: var(--accent-purple); font-size: 0.9rem;">3. SHA-256 Hash</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Compute payload digest</div>
+            </div>
+            <div style="background: #060910; border: 1px solid var(--accent-green); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-weight: 700; color: var(--accent-green); font-size: 0.9rem;">4. LSB Modulation</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Embed into RGB channels</div>
+            </div>
+            <div style="background: #060910; border: 1px solid var(--accent-amber); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="font-weight: 700; color: var(--accent-amber); font-size: 0.9rem;">5. Stego PNG Carrier</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">Lossless visual output</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

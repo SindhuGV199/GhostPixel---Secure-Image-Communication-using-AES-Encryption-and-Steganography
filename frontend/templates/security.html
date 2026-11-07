@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Security Information & Architecture – GhostPixel{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-cyan">Defense Specifications</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Cryptographic Architecture & Information Concealment</span>
+    </div>
+    <h1 style="font-size: 2.2rem; font-weight: 800;">Security Information & Threat Modeling</h1>
+    <p style="color: var(--text-secondary);">An in-depth breakdown of how GhostPixel integrates symmetric encryption, key stretching, payload hashing, and matrix steganography.</p>
+</div>
+
+<!-- Comparison Table: Encryption vs Steganography vs Hashing -->
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="card-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Core Cryptographic Primitives Compared</span>
+        </div>
+        <span class="badge badge-purple">Fundamental Differences</span>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                    <th style="padding: 0.75rem;">Primitive</th>
+                    <th style="padding: 0.75rem;">Primary Purpose</th>
+                    <th style="padding: 0.75rem;">Reversibility</th>
+                    <th style="padding: 0.75rem;">Output Visibility</th>
+                    <th style="padding: 0.75rem;">Role in GhostPixel</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.75rem;"><strong style="color: var(--accent-cyan);">Encryption (AES-256-GCM)</strong></td>
+                    <td style="padding: 0.75rem;">Confidentiality & Data Authentication</td>
+                    <td style="padding: 0.75rem;">Reversible (with correct secret key)</td>
+                    <td style="padding: 0.75rem;">Obvious ciphertext (looks like random noise)</td>
+                    <td style="padding: 0.75rem;">Protects contents of the secret message from being read.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.75rem;"><strong style="color: var(--accent-green);">Steganography (RGB LSB)</strong></td>
+                    <td style="padding: 0.75rem;">Concealment (Hiding existence of communication)</td>
+                    <td style="padding: 0.75rem;">Reversible (extraction algorithm)</td>
+                    <td style="padding: 0.75rem;">Hidden inside an innocent cover carrier</td>
+                    <td style="padding: 0.75rem;">Embeds ciphertext into pixels so third parties don't know a secret exists.</td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem;"><strong style="color: var(--accent-purple);">Hashing (SHA-256)</strong></td>
+                    <td style="padding: 0.75rem;">Integrity Verification & Tamper Detection</td>
+                    <td style="padding: 0.75rem;">Irreversible (One-way mathematical function)</td>
+                    <td style="padding: 0.75rem;">Fixed 256-bit hexadecimal fingerprint</td>
+                    <td style="padding: 0.75rem;">Ensures the extracted encrypted payload has not been modified or corrupted.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Detailed Security Mechanisms Grid -->
+<div class="grid-2 mb-3">
+    <!-- AES-256-GCM -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title" style="color: var(--accent-cyan); font-size: 1.15rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                1. AES-256-GCM Authenticated Encryption
+            </h3>
+        </div>
+        <p style="font-size: 0.88rem; margin-bottom: 0.75rem;">
+            GhostPixel employs <strong>Galois/Counter Mode (GCM)</strong> with a 256-bit key. Unlike standard CBC or ECB modes, GCM provides authenticated encryption with associated data (AEAD):
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.25rem; line-height: 1.6;">
+            <li><strong>Confidentiality:</strong> Encrypts using CTR mode counter streams.</li>
+            <li><strong>Authenticity & Integrity:</strong> Computes a 128-bit authentication tag over the ciphertext using GHASH. Any bit manipulation immediately triggers an <code>InvalidTag</code> exception.</li>
+            <li><strong>Unique Nonce:</strong> Generates a cryptographically random 96-bit (12-byte) initialization vector for every single transmission.</li>
+        </ul>
+    </div>
+
+    <!-- PBKDF2-HMAC-SHA256 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title" style="color: var(--accent-purple); font-size: 1.15rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                2. PBKDF2-HMAC-SHA256 Key Derivation
+            </h3>
+        </div>
+        <p style="font-size: 0.88rem; margin-bottom: 0.75rem;">
+            Human passphrases typically possess insufficient entropy to serve directly as a 256-bit symmetric key. GhostPixel applies rigorous key stretching:
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.25rem; line-height: 1.6;">
+            <li><strong>100,000 Iterations:</strong> Imposes computational cost that resists offline GPU dictionary and brute-force attacks.</li>
+            <li><strong>Random 16-Byte Salt:</strong> Sourced from the operating system's CSPRNG (<code>os.urandom</code>), rendering precomputed Rainbow Tables completely useless.</li>
+            <li><strong>Memory-Safe:</strong> Passphrases are cleared from process memory immediately after derivation.</li>
+        </ul>
+    </div>
+
+    <!-- SHA-256 Hashing -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title" style="color: var(--accent-amber); font-size: 1.15rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                3. Pre-Extraction SHA-256 Integrity Verification
+            </h3>
+        </div>
+        <p style="font-size: 0.88rem; margin-bottom: 0.75rem;">
+            Before submitting ciphertext to the cryptographic engine, GhostPixel verifies the SHA-256 digest of the entire packet:
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.25rem; line-height: 1.6;">
+            <li><strong>Avalanche Effect:</strong> Flipping even a single bit in an image pixel alters on average 50% of the calculated hash bits.</li>
+            <li><strong>Early Tamper Rejection:</strong> Corrupted images or active eavesdroppers modifying bits are caught before the user ever types a password.</li>
+            <li><strong>Constant-Time Verification:</strong> Evaluated using <code>hmac.compare_digest</code> to protect against side-channel timing attacks.</li>
+        </ul>
+    </div>
+
+    <!-- LSB Steganography -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title" style="color: var(--accent-green); font-size: 1.15rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                4. RGB LSB Matrix Modulation
+            </h3>
+        </div>
+        <p style="font-size: 0.88rem; margin-bottom: 0.75rem;">
+            Steganographic embedding operates on 24-bit TrueColor RGB images (PNG/BMP):
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.25rem; line-height: 1.6;">
+            <li><strong>1 Bit per Channel:</strong> Modulates only the least significant bit (value difference of ±1 out of 255), keeping distortion far below human visual thresholds.</li>
+            <li><strong>Lossless Preservation:</strong> Outputs strictly in PNG format to prevent lossy compression algorithms (e.g., JPEG DCT quantization) from destroying payload bits.</li>
+            <li><strong>Capacity Safety:</strong> Validates payload dimensions against carrier dimensions prior to embedding.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Interactive LSB Bit Simulator -->
+<div id="lsb-interactive-demo" class="card mb-3" style="border-color: var(--accent-green);">
+    <div class="card-header">
+        <div class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Interactive LSB Bit-Level Simulator</span>
+        </div>
+        <span class="badge badge-green">Educational Sandbox</span>
+    </div>
+
+    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        See how altering the Least Significant Bit (LSB) changes the pixel's 8-bit integer value without causing any visible change to human vision:
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Click any bit below to toggle (Rightmost is LSB):</div>
+            <div style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">1</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">1</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">0</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">1</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">0</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">1</button>
+                <button type="button" class="btn btn-sm btn-secondary demo-bit">1</button>
+                <button type="button" class="btn btn-sm btn-primary demo-bit" style="border: 2px solid var(--accent-green);" title="Least Significant Bit">0</button>
+            </div>
+
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                <button type="button" id="demo-toggle-lsb" class="btn btn-sm btn-success">
+                    <span>Toggle LSB Only (&plusmn;1)</span>
+                </button>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                    Binary: <code id="demo-binary-str" style="color: var(--accent-cyan); font-weight: 700;">11010110</code>
+                </span>
+            </div>
+
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                8-bit Decimal Channel Value: <strong id="demo-byte-val" style="color: var(--accent-green); font-size: 1.2rem;">214</strong> / 255
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: #060910; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Simulated Pixel Color Render:</div>
+            <div id="demo-color-box" style="width: 100px; height: 100px; border-radius: var(--radius-md); border: 2px solid var(--border-color); background-color: rgb(30, 80, 214); transition: background-color 0.2s ease;"></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
+                Notice that changing the LSB between 214 and 215 produces <strong>zero visible color difference</strong> to human photoreceptors!
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
