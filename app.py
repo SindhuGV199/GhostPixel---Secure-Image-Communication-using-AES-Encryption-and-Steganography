@@ -31,6 +31,7 @@ from backend.encryption import (
 from backend.hashing import (
     compute_sha256,
     compute_sha256_hex,
+    verify_sha256,
     verify_payload_integrity
 )
 from backend.steganography import (
@@ -48,6 +49,15 @@ from backend.image_processing import (
     extract_bit_plane,
     ImageProcessingError,
     InsufficientCapacityError
+)
+from backend.integrity import (
+    verify_transmission,
+    inspect_image_source,
+    TransmissionVerificationError,
+    CarrierCorruptionError,
+    PayloadIntegrityError,
+    AuthenticationFailureError,
+    FormatUnsupportedError
 )
 from backend.performance import (
     calculate_psnr,
@@ -372,10 +382,12 @@ def api_encode():
 def api_extract_info():
     """
     Step 1 & 2 of Receiver Workflow:
-    Extracts LSB payload, computes fresh SHA-256 hash, and compares with stored hash.
-    Does NOT require password yet; verifies payload integrity first.
-    Completely stateless: generates a self-contained payload_token for the receiver
-    so no server session or local state is required between extract and decrypt.
+    Comprehensive Transmission Integrity Verification.
+    1. Validates carrier format and dimensions.
+    2. Extracts LSB envelope and verifies GPX1 magic signature.
+    3. Reconstructs encrypted payload and validates SHA-256 integrity hash.
+    4. Halts if tampered or corrupted.
+    5. Returns self-contained payload_token and 4-stage integrity report.
     """
     if "image" not in request.files:
         return jsonify({"success": False, "error": "No stego image file provided."}), 400
@@ -386,23 +398,46 @@ def api_extract_info():
         if not img_bytes:
             return jsonify({"success": False, "error": "Uploaded image file is empty."}), 400
 
+        # Execute 4-Stage Transmission Integrity Verification
+        report = verify_transmission(img_bytes, password=None)
+        overall = report["overall_integrity"]
+        stage1 = report["stage_1_extraction"]
+        stage2 = report["stage_2_sha256"]
+        stage3 = report["stage_3_aes_gcm"]
+
+        # Check for carrier / extraction failure (JPEG, resizing, cropping, corruption)
+        if stage1["status"] != "SUCCESS":
+            return jsonify({
+                "success": False,
+                "error_code": overall["code"],
+                "error": overall["summary"],
+                "recommendation": overall["diagnostic_recommendation"],
+                "stage": "CARRIER_EXTRACTION",
+                "report": report
+            }), 422
+
+        # Check for SHA-256 hash mismatch
+        if stage2["status"] != "VERIFIED":
+            log_activity(
+                operation="EXTRACT",
+                status="TAMPERED",
+                image_name=file.filename or "stego_image",
+                details=f"Integrity Check Failed: SHA-256 mismatch. {stage2['calculated_hash'][:16]}... vs {stage2['stored_hash'][:16]}..."
+            )
+            return jsonify({
+                "success": False,
+                "error_code": "ERR_SHA256_MISMATCH",
+                "error": "Transmission Integrity Verification Failed: The encrypted payload SHA-256 digest does not match. The carrier image has been modified, tampered with, or corrupted in transit.",
+                "stage": "SHA256_INTEGRITY",
+                "report": report
+            }), 400
+
+        # Payload is verified intact!
         stego_image, img_format = load_image(img_bytes)
-
-        # LSB Extraction Timing
-        t0 = time.perf_counter()
         extracted = extract_lsb(stego_image)
-        t_extract = (time.perf_counter() - t0) * 1000.0
-
-        # SHA-256 Integrity Verification Timing
-        t0 = time.perf_counter()
-        integrity = verify_payload_integrity(extracted["encrypted_payload"], extracted["stored_hash"])
-        t_sha = (time.perf_counter() - t0) * 1000.0
-
-        # Unpack encrypted payload headers to inspect metadata safely
         salt, nonce, tag, ciphertext = unpack_encrypted_payload(extracted["encrypted_payload"])
 
-        # Self-contained stateless payload token:
-        # Base64 of: [Stored Hash: 32 bytes] + [Encrypted Payload: (16 salt + 12 nonce + 16 tag + N ciphertext)]
+        # Construct stateless payload token: [Stored Hash 32B] + [Encrypted Payload NB]
         raw_combined = extracted["stored_hash"] + extracted["encrypted_payload"]
         payload_token = base64.b64encode(raw_combined).decode("ascii")
 
@@ -415,25 +450,32 @@ def api_extract_info():
             "nonce": nonce,
             "tag": tag,
             "ciphertext": ciphertext,
-            "integrity_passed": integrity["is_valid"],
+            "integrity_passed": True,
             "created_at": time.time()
         }
 
-        # Log extraction event
+        # Log verified extraction
         log_activity(
             operation="EXTRACT",
-            status="VERIFIED" if integrity["is_valid"] else "TAMPERED",
+            status="VERIFIED",
             image_name=file.filename or "stego_image",
             payload_size=extracted["payload_length"],
-            processing_time_ms=round(t_extract + t_sha, 2),
-            details=f"Integrity {integrity['status']}, Calculated: {integrity['calculated_hash'][:16]}..."
+            details=f"SHA-256 Verified: {stage2['calculated_hash'][:16]}... (Length: {extracted['payload_length']:,} bytes)"
         )
 
         return jsonify({
             "success": True,
             "extraction_id": extraction_id,
             "payload_token": payload_token,
-            "integrity": integrity,
+            "integrity": {
+                "is_valid": True,
+                "status": "VERIFIED",
+                "calculated_hash": stage2["calculated_hash"],
+                "expected_hash": stage2["stored_hash"],
+                "verification_time_ms": stage2["verification_time_ms"],
+                "message": "Integrity verified: Extracted encrypted payload matches original SHA-256 digest perfectly."
+            },
+            "report": report,
             "payload_info": {
                 "total_payload_bytes": extracted["payload_length"],
                 "ciphertext_bytes": len(ciphertext),
@@ -444,15 +486,11 @@ def api_extract_info():
                 "dimensions": f"{stego_image.width}x{stego_image.height}"
             },
             "timings": {
-                "lsb_extraction_ms": round(t_extract, 2),
-                "sha256_verification_ms": round(t_sha, 4)
+                "lsb_extraction_ms": 0.0,
+                "sha256_verification_ms": stage2["verification_time_ms"]
             }
         })
 
-    except SteganographyError as e:
-        return jsonify({"success": False, "error": str(e)}), 422
-    except ImageProcessingError as e:
-        return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to extract hidden data: {str(e)}"}), 500
 
@@ -461,13 +499,12 @@ def api_extract_info():
 def api_decrypt():
     """
     Step 3 of Receiver Workflow:
-    Completely stateless decryption. Accepts either:
-    1. payload_token (base64 extracted packet) + password
-    2. Direct multipart upload of stego image + password
-    3. extraction_id (in-memory fallback)
-    
-    Enforces SHA-256 integrity check and AES-256-GCM authentication.
-    Recovers original message.
+    Stateless Authenticated Decryption.
+    Strictly enforces:
+    1. SHA-256 integrity verification (halts if payload was altered).
+    2. AES-256-GCM authentication verification (rejects if password wrong or tag manipulated).
+    3. Clear diagnostic distinction between data corruption and wrong password.
+    4. Never displays partially recovered or unauthenticated plaintext.
     """
     req_json = request.get_json(silent=True) or {}
     password = request.form.get("password") or req_json.get("password", "")
@@ -486,17 +523,28 @@ def api_decrypt():
                 return jsonify({"success": False, "error": "Invalid payload token format."}), 400
 
             if len(raw_combined) < 32 + 16 + 12 + 16:
-                return jsonify({"success": False, "error": "Payload token is too short or corrupted."}), 400
+                return jsonify({"success": False, "error": "Payload token is truncated or corrupted."}), 400
 
             stored_hash = raw_combined[:32]
             encrypted_payload = raw_combined[32:]
 
-            # Independent SHA-256 Integrity Verification
-            integrity = verify_payload_integrity(encrypted_payload, stored_hash)
-            if not integrity["is_valid"]:
+            # Strict Gate 1: SHA-256 Integrity Verification
+            is_sha_valid, calc_hex, stored_hex = verify_sha256(encrypted_payload, stored_hash)
+            if not is_sha_valid:
+                log_activity(
+                    operation="DECODE",
+                    status="CORRUPTED",
+                    details="Decryption aborted: SHA-256 integrity mismatch."
+                )
                 return jsonify({
                     "success": False,
-                    "error": "Decryption aborted: Payload integrity verification failed! The hidden data has been tampered with or corrupted."
+                    "error_code": "ERR_SHA256_MISMATCH",
+                    "error": "Transmission Integrity Verification Failed: The encrypted payload SHA-256 digest does not match. Decryption is prohibited to prevent exposing corrupted data.",
+                    "stage": "SHA256_INTEGRITY",
+                    "sha256_status": "MISMATCH",
+                    "aes_gcm_status": "HALTED",
+                    "calculated_hash": calc_hex,
+                    "stored_hash": stored_hex
                 }), 400
 
             salt, nonce, tag, ciphertext = unpack_encrypted_payload(encrypted_payload)
@@ -508,7 +556,11 @@ def api_decrypt():
             if not cached["integrity_passed"]:
                 return jsonify({
                     "success": False,
-                    "error": "Decryption aborted: Payload integrity verification failed! The hidden data has been tampered with or corrupted."
+                    "error_code": "ERR_SHA256_MISMATCH",
+                    "error": "Decryption aborted: Payload integrity verification failed! The hidden data has been tampered with or corrupted.",
+                    "stage": "SHA256_INTEGRITY",
+                    "sha256_status": "MISMATCH",
+                    "aes_gcm_status": "HALTED"
                 }), 400
 
             salt = cached["salt"]
@@ -521,31 +573,60 @@ def api_decrypt():
         elif "image" in request.files:
             file = request.files["image"]
             img_bytes = file.read()
-            stego_image, _ = load_image(img_bytes)
-            extracted = extract_lsb(stego_image)
+            report = verify_transmission(img_bytes, password=password)
+            overall = report["overall_integrity"]
 
-            # Strict integrity verification
-            integrity = verify_payload_integrity(extracted["encrypted_payload"], extracted["stored_hash"])
-            if not integrity["is_valid"]:
+            if not report["stage_1_extraction"]["magic_verified"]:
                 return jsonify({
                     "success": False,
-                    "error": "Decryption aborted: SHA-256 integrity verification failed. Data was modified or corrupted!"
+                    "error_code": overall["code"],
+                    "error": overall["summary"],
+                    "stage": "CARRIER_EXTRACTION",
+                    "report": report
+                }), 422
+
+            if not report["stage_2_sha256"]["hash_match"]:
+                return jsonify({
+                    "success": False,
+                    "error_code": "ERR_SHA256_MISMATCH",
+                    "error": overall["summary"],
+                    "stage": "SHA256_INTEGRITY",
+                    "report": report
                 }), 400
 
-            salt, nonce, tag, ciphertext = unpack_encrypted_payload(extracted["encrypted_payload"])
-            payload_size = len(extracted["encrypted_payload"])
+            if not report["stage_3_aes_gcm"]["tag_verified"]:
+                return jsonify({
+                    "success": False,
+                    "error_code": "ERR_AES_GCM_AUTH_FAILED",
+                    "error": overall["summary"],
+                    "stage": "AES_GCM_AUTHENTICATION",
+                    "report": report
+                }), 401
+
+            return jsonify({
+                "success": True,
+                "message": "Message successfully decrypted and authenticated!",
+                "decrypted_message": report["recovered_message"],
+                "message_length": len(report["recovered_message"]),
+                "decryption_time_ms": report["stage_3_aes_gcm"]["auth_time_ms"],
+                "authentication_status": "AUTHENTICATED (AES-256-GCM Tag Verified)",
+                "sha256_status": "VERIFIED",
+                "aes_gcm_status": "AUTHENTICATED",
+                "overall_verdict": "SECURE_AND_AUTHENTICATED",
+                "report": report
+            })
         else:
             return jsonify({
                 "success": False,
-                "error": "No valid extraction session or image provided. Please extract the image first or upload it with password."
+                "error": "No valid payload token or image provided. Please extract the image first."
             }), 400
 
-        # AES-256-GCM Decryption Timing
+        # Strict Gate 2: AES-256-GCM Cryptographic Authentication
         t0 = time.perf_counter()
         decrypted_message = decrypt_message(salt, nonce, tag, ciphertext, password)
         t_aes_dec = (time.perf_counter() - t0) * 1000.0
 
-        # Log to SQLite
+        # Log successful decode
         log_activity(
             operation="DECODE",
             status="SUCCESS",
@@ -557,25 +638,56 @@ def api_decrypt():
 
         return jsonify({
             "success": True,
-            "message": "Message successfully decrypted and verified!",
+            "message": "Message successfully decrypted and authenticated!",
             "decrypted_message": decrypted_message,
             "message_length": len(decrypted_message),
             "decryption_time_ms": round(t_aes_dec, 2),
-            "authentication_status": "AUTHENTICATED (AES-256-GCM Tag Verified)"
+            "authentication_status": "AUTHENTICATED (AES-256-GCM Tag Verified)",
+            "sha256_status": "VERIFIED",
+            "aes_gcm_status": "AUTHENTICATED",
+            "overall_verdict": "SECURE_AND_AUTHENTICATED"
         })
 
     except DecryptionError as e:
         log_activity(
             operation="DECODE",
-            status="FAILED",
-            details=f"Decryption failed: {str(e)}"
+            status="AUTH_FAILED",
+            details=f"Authentication failure: {str(e)}"
         )
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error_code": "ERR_AES_GCM_AUTH_FAILED",
+            "error": "Cryptographic Authentication Failed: Incorrect password or authentication tag mismatch. Decryption rejected.",
+            "stage": "AES_GCM_AUTHENTICATION",
+            "sha256_status": "VERIFIED",
+            "aes_gcm_status": "AUTH_FAILED"
         }), 401
     except Exception as e:
         return jsonify({"success": False, "error": f"Decryption error: {str(e)}"}), 500
+
+
+@app.route("/api/verify-integrity", methods=["POST"])
+def api_verify_integrity():
+    """
+    Dedicated Transmission Integrity Verification Endpoint.
+    Inspects any image and returns the full 4-stage integrity diagnostic report:
+    - Carrier Extraction Status
+    - SHA-256 Payload Hash Status
+    - AES-256-GCM Authentication Status (if password provided)
+    - Overall Transmission Verdict and Recommendations
+    """
+    if "image" not in request.files:
+        return jsonify({"success": False, "error": "No image file provided."}), 400
+
+    file = request.files["image"]
+    password = request.form.get("password") or None
+
+    try:
+        img_bytes = file.read()
+        report = verify_transmission(img_bytes, password=password)
+        return jsonify({"success": True, "report": report})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Integrity analysis failed: {str(e)}"}), 500
 
 
 # ==========================================

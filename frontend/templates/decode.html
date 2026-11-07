@@ -83,18 +83,61 @@
 
     <!-- Right Column: Integrity Diagnostics & Decrypted Message Result -->
     <div>
-        <!-- Integrity Verification Card -->
+        <!-- Transmission Integrity Verification Card -->
         <div id="integrity-verification-card" class="card mb-3 hidden">
             <div class="card-header">
                 <div class="card-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    <span>Payload Integrity Verification</span>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Transmission Integrity Verification</span>
                 </div>
-                <span id="integrity-status-badge" class="badge badge-green">VERIFIED</span>
+                <span id="overall-integrity-badge" class="badge badge-green">VERIFIED</span>
             </div>
 
-            <!-- Status banner -->
+            <!-- Overall Status Banner -->
             <div id="integrity-status-msg" class="alert alert-success"></div>
+
+            <!-- 4-Stage Diagnostic Verification Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+                <!-- Stage 1: Extraction -->
+                <div style="background: rgba(13, 19, 34, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">1. EXTRACTION STATUS</span>
+                        <span id="stage-extract-badge" class="badge badge-green" style="font-size: 0.65rem;">SUCCESS</span>
+                    </div>
+                    <div id="stage-extract-details" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;">GPX1 Signature Verified</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Envelope: <span id="meta-envelope-size">-</span></div>
+                </div>
+
+                <!-- Stage 2: SHA-256 -->
+                <div style="background: rgba(13, 19, 34, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">2. SHA-256 INTEGRITY</span>
+                        <span id="stage-sha-badge" class="badge badge-green" style="font-size: 0.65rem;">MATCH</span>
+                    </div>
+                    <div id="stage-sha-details" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;">Payload Digest Valid</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Checked in <span id="meta-sha-time">-</span></div>
+                </div>
+
+                <!-- Stage 3: AES-GCM -->
+                <div style="background: rgba(13, 19, 34, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">3. AES-GCM AUTHENTICATION</span>
+                        <span id="stage-aes-badge" class="badge badge-purple" style="font-size: 0.65rem;">AWAITING PASSWORD</span>
+                    </div>
+                    <div id="stage-aes-details" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;">128-bit Tag Ready</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Tag: <span id="meta-tag-short" style="font-family: var(--font-mono);">-</span></div>
+                </div>
+
+                <!-- Stage 4: Overall Transmission -->
+                <div style="background: rgba(13, 19, 34, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">4. TRANSMISSION INTEGRITY</span>
+                        <span id="stage-overall-badge" class="badge badge-cyan" style="font-size: 0.65rem;">INTACT</span>
+                    </div>
+                    <div id="stage-overall-details" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;">Unmodified in Transit</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Safe to decrypt</div>
+                </div>
+            </div>
 
             <!-- Hash Equality Diagnostics -->
             <div class="form-group mb-2">
@@ -106,7 +149,7 @@
                 <div id="stored-sha-hash" class="code-block" style="font-size: 0.78rem; color: #a78bfa;">-</div>
             </div>
 
-            <!-- Extracted Metadata -->
+            <!-- Extracted Cryptographic Parameters -->
             <div style="background: rgba(13, 19, 34, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; font-size: 0.82rem;">
                 <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">Extracted Cryptographic Parameters</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">

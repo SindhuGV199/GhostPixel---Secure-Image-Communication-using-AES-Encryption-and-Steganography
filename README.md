@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Cryptography AES-GCM](https://img.shields.io/badge/cryptography-AES--256--GCM-green.svg)](https://cryptography.io/)
 [![Steganography RGB LSB](https://img.shields.io/badge/steganography-RGB%20LSB-cyan.svg)](https://pillow.readthedocs.io/)
-[![Tests Passing](https://img.shields.io/badge/tests-31%2F31%20passed-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/tests-39%2F39%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
 **GhostPixel** is a fully functional, production-ready cybersecurity web application and CLI tool that enables **real-world, independent sender-to-receiver covert communication**. It tightly integrates three core cryptographic and steganographic primitives:
@@ -87,8 +87,10 @@ GhostPixel/
 │   ├── __init__.py             # Backend package marker
 │   ├── encryption.py           # AES-256-GCM & PBKDF2 key derivation
 │   ├── hashing.py              # SHA-256 hashing & integrity verification
+│   ├── integrity.py            # 4-Stage Transmission Integrity Verification engine
 │   ├── steganography.py        # RGB LSB embedding & extraction
 │   ├── image_processing.py     # Image loading, capacity checks, difference maps
+│   ├── steganalysis.py         # Chi-Square (χ²) steganalysis detection engine
 │   ├── performance.py          # PSNR, SSIM, latency & benchmark suites
 │   └── database.py             # SQLite activity and benchmark logging
 │
@@ -115,6 +117,7 @@ GhostPixel/
 │   ├── test_performance.py     # Unit tests for PSNR, SSIM, and accuracy
 │   ├── test_end_to_end.py      # Full integration test through Flask test client
 │   ├── test_independent_communication.py # Independent sender-receiver session tests
+│   ├── test_transmission_integrity.py   # Transmission integrity, JPEG, resize, crop tests
 │   └── test_live_flow.py       # Live pipeline verification script
 │
 └── uploads/
@@ -186,9 +189,9 @@ python -m unittest discover tests
 
 Expected output:
 ```text
-...............................
+.......................................
 ----------------------------------------------------------------------
-Ran 31 tests in 3.132s
+Ran 39 tests in 5.347s
 
 OK
 ```

@@ -455,27 +455,69 @@ function initDecodeModule() {
 
     function renderIntegrity(data) {
         const integ = data.integrity;
-        const badge = document.getElementById("integrity-status-badge");
+        const rep = data.report || {};
+        const overallBadge = document.getElementById("overall-integrity-badge");
         const statusMsg = document.getElementById("integrity-status-msg");
 
         if (integ.is_valid) {
-            badge.className = "badge badge-green";
-            badge.textContent = "VERIFIED (SHA-256 MATCH)";
+            if (overallBadge) {
+                overallBadge.className = "badge badge-green";
+                overallBadge.textContent = "VERIFIED INTACT";
+            }
             statusMsg.className = "alert alert-success mt-2";
-            statusMsg.textContent = integ.message;
+            statusMsg.textContent = integ.message || "Integrity verified: Extracted encrypted payload matches original SHA-256 digest perfectly.";
+
+            // Stage 1
+            const st1Badge = document.getElementById("stage-extract-badge");
+            if (st1Badge) { st1Badge.className = "badge badge-green"; st1Badge.textContent = "SUCCESS"; }
+            const envSize = document.getElementById("meta-envelope-size");
+            if (envSize && data.payload_info) { envSize.textContent = `${data.payload_info.total_payload_bytes} bytes`; }
+
+            // Stage 2
+            const st2Badge = document.getElementById("stage-sha-badge");
+            if (st2Badge) { st2Badge.className = "badge badge-green"; st2Badge.textContent = "MATCH"; }
+            const shaTime = document.getElementById("meta-sha-time");
+            if (shaTime && integ.verification_time_ms) { shaTime.textContent = `${integ.verification_time_ms} ms`; }
+
+            // Stage 3
+            const st3Badge = document.getElementById("stage-aes-badge");
+            if (st3Badge) { st3Badge.className = "badge badge-purple"; st3Badge.textContent = "AWAITING PASSWORD"; }
+            const tagShort = document.getElementById("meta-tag-short");
+            if (tagShort && data.payload_info) { tagShort.textContent = `${data.payload_info.tag_hex.substring(0, 12)}...`; }
+
+            // Stage 4
+            const st4Badge = document.getElementById("stage-overall-badge");
+            if (st4Badge) { st4Badge.className = "badge badge-cyan"; st4Badge.textContent = "INTACT"; }
         } else {
-            badge.className = "badge badge-red";
-            badge.textContent = "TAMPERED / MISMATCH";
+            if (overallBadge) {
+                overallBadge.className = "badge badge-red";
+                overallBadge.textContent = "TAMPERED / MISMATCH";
+            }
             statusMsg.className = "alert alert-danger mt-2";
-            statusMsg.textContent = integ.message;
+            statusMsg.textContent = integ.message || "Integrity check failed: Extracted payload has been modified, corrupted, or tampered with!";
+
+            const st2Badge = document.getElementById("stage-sha-badge");
+            if (st2Badge) { st2Badge.className = "badge badge-red"; st2Badge.textContent = "MISMATCH"; }
+
+            const st3Badge = document.getElementById("stage-aes-badge");
+            if (st3Badge) { st3Badge.className = "badge badge-red"; st3Badge.textContent = "HALTED"; }
+
+            const st4Badge = document.getElementById("stage-overall-badge");
+            if (st4Badge) { st4Badge.className = "badge badge-red"; st4Badge.textContent = "CORRUPTED"; }
         }
 
-        document.getElementById("calc-sha-hash").textContent = integ.calculated_hash;
-        document.getElementById("stored-sha-hash").textContent = integ.expected_hash;
-        document.getElementById("meta-salt").textContent = data.payload_info.salt_hex;
-        document.getElementById("meta-nonce").textContent = data.payload_info.nonce_hex;
-        document.getElementById("meta-tag").textContent = data.payload_info.tag_hex;
-        document.getElementById("meta-ciphertext-size").textContent = `${data.payload_info.ciphertext_bytes} bytes`;
+        if (document.getElementById("calc-sha-hash")) {
+            document.getElementById("calc-sha-hash").textContent = integ.calculated_hash || "-";
+        }
+        if (document.getElementById("stored-sha-hash")) {
+            document.getElementById("stored-sha-hash").textContent = integ.expected_hash || "-";
+        }
+        if (data.payload_info) {
+            document.getElementById("meta-salt").textContent = data.payload_info.salt_hex || "-";
+            document.getElementById("meta-nonce").textContent = data.payload_info.nonce_hex || "-";
+            document.getElementById("meta-tag").textContent = data.payload_info.tag_hex || "-";
+            document.getElementById("meta-ciphertext-size").textContent = `${data.payload_info.ciphertext_bytes} bytes`;
+        }
     }
 
     // Step 2: Decrypt with Password
@@ -508,7 +550,29 @@ function initDecodeModule() {
                 document.getElementById("decryption-time").textContent = `${data.decryption_time_ms} ms`;
                 resultCard.classList.remove("hidden");
                 resultCard.scrollIntoView({ behavior: "smooth" });
+
+                // Update scorecard on successful authentication
+                const st3Badge = document.getElementById("stage-aes-badge");
+                if (st3Badge) { st3Badge.className = "badge badge-green"; st3Badge.textContent = "AUTHENTICATED"; }
+                const st3Details = document.getElementById("stage-aes-details");
+                if (st3Details) { st3Details.textContent = "128-bit Tag Verified"; }
+
+                const st4Badge = document.getElementById("stage-overall-badge");
+                if (st4Badge) { st4Badge.className = "badge badge-green"; st4Badge.textContent = "SECURE & VERIFIED"; }
+                const st4Details = document.getElementById("stage-overall-details");
+                if (st4Details) { st4Details.textContent = "Full Pipeline Authenticated"; }
             } else {
+                // Update scorecard on authentication failure
+                const st3Badge = document.getElementById("stage-aes-badge");
+                if (st3Badge) { st3Badge.className = "badge badge-red"; st3Badge.textContent = "AUTH FAILED"; }
+                const st3Details = document.getElementById("stage-aes-details");
+                if (st3Details) { st3Details.textContent = "Invalid Key / Tag Mismatch"; }
+
+                const st4Badge = document.getElementById("stage-overall-badge");
+                if (st4Badge) { st4Badge.className = "badge badge-red"; st4Badge.textContent = "AUTH REJECTED"; }
+                const st4Details = document.getElementById("stage-overall-details");
+                if (st4Details) { st4Details.textContent = "Decryption Prohibited"; }
+
                 showError(data.error || "Decryption failed. Please verify your password.");
             }
         } catch (err) {
