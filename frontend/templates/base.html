@@ -43,6 +43,7 @@
                 <li><a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}">Dashboard</a></li>
                 <li><a href="{{ url_for('encode_page') }}" class="nav-link {% if request.path == '/encode' %}active{% endif %}">Sender Portal</a></li>
                 <li><a href="{{ url_for('decode_page') }}" class="nav-link {% if request.path == '/decode' %}active{% endif %}">Receiver Portal</a></li>
+                <li><a href="{{ url_for('corruption_testing_page') }}" class="nav-link {% if request.path == '/corruption-testing' %}active{% endif %}">Corruption Testing</a></li>
                 <li><a href="{{ url_for('performance_page') }}" class="nav-link {% if request.path == '/performance' %}active{% endif %}">Performance</a></li>
                 <li><a href="{{ url_for('security_page') }}" class="nav-link {% if request.path == '/security' %}active{% endif %}">Security Info</a></li>
                 <li><a href="{{ url_for('about_page') }}" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a></li>

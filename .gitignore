@@ -44,6 +44,8 @@ uploads/stego/*
 !uploads/stego/.gitkeep
 uploads/diffs/*
 !uploads/diffs/.gitkeep
+uploads/corrupted/*
+!uploads/corrupted/.gitkeep
 uploads/*.db
 uploads/*.sqlite
 uploads/*.sqlite3

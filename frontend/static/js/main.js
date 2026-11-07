@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("decode-form")) initDecodeModule();
     if (document.getElementById("performance-runner")) initPerformanceModule();
     if (document.getElementById("lsb-interactive-demo")) initLsbDemo();
+    if (document.getElementById("corruption-testing-form")) initCorruptionModule();
 });
 
 // ==========================================
@@ -740,5 +741,362 @@ function initLsbDemo() {
     });
 
     updateDemoDisplay();
+}
+
+// ==========================================
+// CORRUPTION SIMULATION & TESTING MODULE
+// ==========================================
+function initCorruptionModule() {
+    const dropzone = document.getElementById("sim-dropzone");
+    const fileInput = document.getElementById("sim-image-input");
+    const previewContainer = document.getElementById("sim-preview-container");
+    const previewImg = document.getElementById("sim-preview");
+    const inspectionBox = document.getElementById("sim-inspection-box");
+    const inspDims = document.getElementById("insp-dims");
+    const inspLen = document.getElementById("insp-len");
+    const inspPx = document.getElementById("insp-px");
+    const inspUnused = document.getElementById("insp-unused");
+    const inspBadge = document.getElementById("insp-badge");
+    const btnSimulate = document.getElementById("btn-simulate");
+    const errorAlert = document.getElementById("sim-error-alert");
+
+    // Dynamic panels & controls
+    const techRadios = document.querySelectorAll("input[name='technique']");
+    const panels = {
+        bit_flipping: document.getElementById("panel-bit-flipping"),
+        random_pixels: document.getElementById("panel-random-pixels"),
+        jpeg_compression: document.getElementById("panel-jpeg"),
+        cropping: document.getElementById("panel-cropping"),
+        resizing: document.getElementById("panel-resizing")
+    };
+
+    // Sliders
+    const intensitySlider = document.getElementById("param-intensity");
+    const intensityVal = document.getElementById("intensity-val");
+    if (intensitySlider && intensityVal) {
+        intensitySlider.addEventListener("input", (e) => {
+            intensityVal.textContent = parseFloat(e.target.value).toFixed(1) + "%";
+        });
+    }
+
+    const qualitySlider = document.getElementById("param-quality");
+    const qualityVal = document.getElementById("quality-val");
+    if (qualitySlider && qualityVal) {
+        qualitySlider.addEventListener("input", (e) => {
+            const v = e.target.value;
+            qualityVal.textContent = `${v} (${v >= 80 ? 'High' : v >= 50 ? 'Medium' : 'Aggressive'})`;
+        });
+    }
+
+    const cropSlider = document.getElementById("param-percentage");
+    const cropVal = document.getElementById("crop-val");
+    if (cropSlider && cropVal) {
+        cropSlider.addEventListener("input", (e) => {
+            cropVal.textContent = e.target.value + "%";
+        });
+    }
+
+    // Technique Radio Change Handler
+    techRadios.forEach(radio => {
+        radio.addEventListener("change", () => {
+            // Update styling of labels
+            document.querySelectorAll(".technique-option").forEach(label => {
+                const isSelected = label.querySelector("input").checked;
+                label.classList.toggle("active", isSelected);
+                if (isSelected) {
+                    label.style.borderColor = "var(--accent-purple)";
+                    label.style.background = "rgba(139, 92, 246, 0.08)";
+                } else {
+                    label.style.borderColor = "var(--border-color)";
+                    label.style.background = "rgba(15, 23, 42, 0.4)";
+                }
+            });
+
+            // Toggle panels
+            const selectedVal = radio.value;
+            Object.keys(panels).forEach(key => {
+                if (panels[key]) {
+                    panels[key].classList.toggle("hidden", key !== selectedVal);
+                }
+            });
+        });
+    });
+
+    let currentFile = null;
+    let originalDataUrl = null;
+
+    // Dropzone events
+    if (dropzone && fileInput) {
+        dropzone.addEventListener("click", () => fileInput.click());
+        dropzone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropzone.classList.add("drag-over");
+        });
+        dropzone.addEventListener("dragleave", () => {
+            dropzone.classList.remove("drag-over");
+        });
+        dropzone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("drag-over");
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelection(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelection(e.target.files[0]);
+            }
+        });
+    }
+
+    function handleFileSelection(file) {
+        if (!file.type.match(/image\/(png|bmp)/) && !file.name.match(/\.(png|bmp)$/i)) {
+            showError("Unsupported format. Please select a GhostPixel carrier in PNG or BMP format.");
+            return;
+        }
+
+        currentFile = file;
+        hideError();
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            originalDataUrl = e.target.result;
+            previewImg.src = originalDataUrl;
+            previewContainer.classList.remove("hidden");
+            dropzone.classList.add("has-file");
+            dropzone.querySelector(".dropzone-text").textContent = file.name;
+            dropzone.querySelector(".dropzone-hint").textContent = `${formatBytes(file.size)} • Click to choose another image`;
+            btnSimulate.disabled = false;
+
+            // Inspect stego layout
+            inspectStegoImage(file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function inspectStegoImage(file) {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        fetch("/api/inspect-stego", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.layout) {
+                inspectionBox.classList.remove("hidden");
+                const l = data.layout;
+                inspDims.textContent = data.dimensions || "-";
+                if (l.is_valid_stego) {
+                    inspLen.textContent = `${(l.payload_len || 0).toLocaleString()} bytes`;
+                    inspPx.textContent = `${(l.payload_pixels_count || 0).toLocaleString()} px`;
+                    inspUnused.textContent = `${(l.unused_pixels_count || 0).toLocaleString()} px`;
+                    inspBadge.className = "badge badge-green";
+                    inspBadge.textContent = "GPX1 DETECTED";
+                } else {
+                    inspLen.textContent = "N/A";
+                    inspPx.textContent = "0";
+                    inspUnused.textContent = "All";
+                    inspBadge.className = "badge badge-red";
+                    inspBadge.textContent = "NO GPX1 SIGNATURE";
+                }
+            }
+        })
+        .catch(err => {
+            console.warn("Stego inspection check:", err);
+        });
+    }
+
+    // Simulation Execution
+    if (btnSimulate) {
+        btnSimulate.addEventListener("click", () => {
+            if (!currentFile) {
+                showError("Please upload a stego image first.");
+                return;
+            }
+
+            hideError();
+            btnSimulate.disabled = true;
+            btnSimulate.innerHTML = `
+                <div class="spinner"></div>
+                <span>Simulating Corruption &amp; Verifying Receiver...</span>
+            `;
+
+            const selectedRadio = document.querySelector("input[name='technique']:checked");
+            const technique = selectedRadio ? selectedRadio.value : "bit_flipping";
+            const password = document.getElementById("sim-password").value;
+
+            const formData = new FormData();
+            formData.append("stego_image", currentFile);
+            formData.append("technique", technique);
+            if (password) formData.append("password", password);
+
+            // Add technique parameters
+            if (technique === "bit_flipping") {
+                formData.append("target_part", document.getElementById("param-target-part").value);
+                formData.append("num_flips", document.getElementById("param-num-flips").value);
+            } else if (technique === "random_pixels") {
+                formData.append("target_region", document.getElementById("param-target-region").value);
+                formData.append("intensity", document.getElementById("param-intensity").value);
+            } else if (technique === "jpeg_compression") {
+                formData.append("quality", document.getElementById("param-quality").value);
+            } else if (technique === "cropping") {
+                formData.append("crop_edge", document.getElementById("param-crop-edge").value);
+                formData.append("percentage", document.getElementById("param-percentage").value);
+            } else if (technique === "resizing") {
+                formData.append("scale_factor", document.getElementById("param-scale-factor").value);
+            }
+
+            fetch("/api/simulate-corruption", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnSimulate.disabled = false;
+                btnSimulate.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Simulate Corruption &amp; Verify Receiver</span>
+                `;
+
+                if (!data.success) {
+                    showError(data.error || "Simulation error occurred.");
+                    return;
+                }
+
+                renderSimulationResults(data);
+            })
+            .catch(err => {
+                btnSimulate.disabled = false;
+                btnSimulate.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Simulate Corruption &amp; Verify Receiver</span>
+                `;
+                showError("Network or server error: " + err.message);
+            });
+        });
+    }
+
+    function renderSimulationResults(data) {
+        // Show comparison card
+        const compCard = document.getElementById("sim-comparison-card");
+        compCard.classList.remove("hidden");
+
+        document.getElementById("sim-technique-badge").textContent = data.technique;
+        document.getElementById("comp-orig-dims").textContent = data.original_dimensions;
+        document.getElementById("comp-orig-img").src = originalDataUrl || previewImg.src;
+        document.getElementById("comp-corr-dims").textContent = data.corrupted_dimensions;
+        document.getElementById("comp-corr-img").src = data.corrupted_image_url;
+
+        const downloadBtn = document.getElementById("btn-download-corrupted");
+        downloadBtn.href = data.download_url;
+
+        // Show results card
+        const resultsCard = document.getElementById("sim-results-card");
+        resultsCard.classList.remove("hidden");
+
+        const v = data.verification;
+        const isSuccess = (v.final_result === "SUCCESSFUL");
+
+        const verdictBadge = document.getElementById("sim-verdict-badge");
+        const verdictBanner = document.getElementById("sim-verdict-banner");
+
+        if (isSuccess) {
+            verdictBadge.className = "badge badge-green";
+            verdictBadge.textContent = "SUCCESSFUL";
+            verdictBanner.className = "alert alert-success";
+            verdictBanner.innerHTML = `<strong>SUCCESSFUL:</strong> Payload Intact &amp; Receiver Verification Passed (${data.technique})`;
+        } else {
+            verdictBadge.className = "badge badge-red";
+            verdictBadge.textContent = "CORRUPTION DETECTED";
+            verdictBanner.className = "alert alert-danger";
+            verdictBanner.innerHTML = `<strong>CORRUPTION DETECTED:</strong> Receiver Successfully Detected Tampering / Carrier Destruction (${data.technique})`;
+        }
+
+        // Extraction metric
+        const extText = document.getElementById("res-extraction-text");
+        const extBadge = document.getElementById("res-extraction-badge");
+        extText.textContent = v.extraction_status;
+        if (v.extraction_succeeded) {
+            extBadge.className = "badge badge-green";
+            extBadge.textContent = "PASSED";
+        } else {
+            extBadge.className = "badge badge-red";
+            extBadge.textContent = "FAILED";
+        }
+
+        // SHA-256 metric
+        const shaText = document.getElementById("res-sha256-text");
+        const shaBadge = document.getElementById("res-sha256-badge");
+        shaText.textContent = v.sha256_status;
+        if (v.sha256_status === "VERIFIED") {
+            shaBadge.className = "badge badge-green";
+            shaBadge.textContent = "MATCH";
+        } else if (v.sha256_status === "MISMATCH") {
+            shaBadge.className = "badge badge-red";
+            shaBadge.textContent = "MISMATCH";
+        } else {
+            shaBadge.className = "badge badge-purple";
+            shaBadge.textContent = v.sha256_status || "SKIPPED";
+        }
+
+        // AES-GCM metric
+        const aesText = document.getElementById("res-aes-text");
+        const aesBadge = document.getElementById("res-aes-badge");
+        aesText.textContent = v.aes_gcm_status;
+        if (v.aes_gcm_status === "AUTHENTICATED") {
+            aesBadge.className = "badge badge-green";
+            aesBadge.textContent = "PASSED";
+        } else if (v.aes_gcm_status === "AUTH_FAILED") {
+            aesBadge.className = "badge badge-red";
+            aesBadge.textContent = "FAILED";
+        } else {
+            aesBadge.className = "badge badge-cyan";
+            aesBadge.textContent = v.aes_gcm_status || "SKIPPED";
+        }
+
+        // Time
+        document.getElementById("res-time-text").textContent = `${data.processing_time_ms} ms`;
+
+        // Hash comparison
+        document.getElementById("res-stored-hash").textContent = v.stored_hash || "Not extracted";
+        document.getElementById("res-calculated-hash").textContent = v.calculated_hash || "Not extracted";
+
+        // Plaintext or withheld alert
+        const recCard = document.getElementById("sim-recovered-card");
+        const withheldAlert = document.getElementById("sim-withheld-alert");
+
+        if (v.recovered_message) {
+            recCard.classList.remove("hidden");
+            document.getElementById("sim-recovered-text").textContent = v.recovered_message;
+            withheldAlert.classList.add("hidden");
+        } else {
+            recCard.classList.add("hidden");
+            withheldAlert.classList.remove("hidden");
+        }
+
+        // Diagnostic text
+        document.getElementById("sim-diagnostic-text").textContent = v.diagnostic_recommendation || v.extraction_details || "No recommendations.";
+
+        // Scroll to results smoothly
+        compCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function showError(msg) {
+        if (!errorAlert) return;
+        errorAlert.textContent = msg;
+        errorAlert.classList.remove("hidden");
+    }
+
+    function hideError() {
+        if (!errorAlert) return;
+        errorAlert.classList.add("hidden");
+        errorAlert.textContent = "";
+    }
 }
 

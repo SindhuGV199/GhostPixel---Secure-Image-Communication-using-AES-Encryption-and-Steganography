@@ -55,6 +55,7 @@ GhostPixel is architected as two **completely independent workflows** that do no
 - **Lossless PNG Enforcement:** Output images are saved strictly as lossless PNGs to prevent lossy compression algorithms (like JPEG) from altering LSB bits.
 - **Visual Steganalysis (Difference Map):** Generates a 255x amplified difference map showing the exact pixel bits modulated by the steganographic engine.
 - **Empirical Performance Evaluation:** Computes actual Peak Signal-to-Noise Ratio (PSNR in dB), Structural Similarity Index (SSIM), execution latency per stage (in ms), recovery accuracy, and tamper detection rates.
+- **Corruption Simulation & Resilience Lab:** Controlled simulation of transport noise, random pixel corruption, lossy JPEG compression, geometric cropping, resizing, and precision LSB bit flipping with real-time Receiver verification.
 - **Modern Cyber Dark UI:** Styled with a dark navy background, subtle purple/cyan neon accents, live capacity gauges, password strength meters, and side-by-side comparison previews.
 - **CLI Utility (`cli.py`):** Standalone terminal tool for encoding, decoding, and benchmarking.
 - **Deployment Ready:** Configured with `gunicorn`, `Procfile`, environment variable ports, health check API (`/api/health`), and automatic temporary file cleanup.
@@ -88,6 +89,7 @@ GhostPixel/
 │   ├── encryption.py           # AES-256-GCM & PBKDF2 key derivation
 │   ├── hashing.py              # SHA-256 hashing & integrity verification
 │   ├── integrity.py            # 4-Stage Transmission Integrity Verification engine
+│   ├── corruption.py           # Carrier corruption simulation engine (5 techniques)
 │   ├── steganography.py        # RGB LSB embedding & extraction
 │   ├── image_processing.py     # Image loading, capacity checks, difference maps
 │   ├── steganalysis.py         # Chi-Square (χ²) steganalysis detection engine
@@ -100,6 +102,7 @@ GhostPixel/
 │   │   ├── index.html          # Landing dashboard with Sender & Receiver portals
 │   │   ├── encode.html         # Dedicated Sender Portal (Message -> Stego PNG)
 │   │   ├── decode.html         # Dedicated Receiver Portal (Stego PNG -> Plaintext)
+│   │   ├── corruption_testing.html # Corruption Simulation & Receiver Lab
 │   │   ├── performance.html    # Empirical benchmark suite & metrics visualizer
 │   │   ├── security.html       # Cryptographic breakdown & LSB simulator
 │   │   └── about.html          # Project architecture & specifications
@@ -118,12 +121,14 @@ GhostPixel/
 │   ├── test_end_to_end.py      # Full integration test through Flask test client
 │   ├── test_independent_communication.py # Independent sender-receiver session tests
 │   ├── test_transmission_integrity.py   # Transmission integrity, JPEG, resize, crop tests
+│   ├── test_corruption_simulation.py    # Unit & API tests for all 5 corruption techniques
 │   └── test_live_flow.py       # Live pipeline verification script
 │
 └── uploads/
     ├── covers/                 # Temporary storage of cover images
     ├── stego/                  # Generated stego PNG carrier files
     ├── diffs/                  # Visual difference maps (255x amplified)
+    ├── corrupted/              # Generated simulation corrupted carrier files
     ├── samples/                # High-resolution benchmark cover images
     └── ghostpixel.db           # Persistent SQLite database
 ```
@@ -181,7 +186,7 @@ python cli.py benchmark
 
 ## 🧪 Running Automated Tests
 
-Run the full automated test suite (31 tests across all modules):
+Run the full automated test suite (48 tests across all modules):
 
 ```bash
 python -m unittest discover tests
@@ -189,9 +194,12 @@ python -m unittest discover tests
 
 Expected output:
 ```text
-.......................................
+................................................
 ----------------------------------------------------------------------
-Ran 39 tests in 5.347s
+Ran 48 tests in 6.480s
+
+OK
+```
 
 OK
 ```

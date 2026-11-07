@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Corruption Simulation & Receiver Testing – GhostPixel{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+        <span class="badge badge-purple" style="font-size: 0.75rem; letter-spacing: 1px;">SIMULATION &amp; RESILIENCE LAB</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Controlled Carrier &amp; Payload Degradation &bull; Real Cryptographic Verification</span>
+    </div>
+    <h1 style="font-size: 2.2rem; font-weight: 800;">Carrier Corruption Simulation &amp; Receiver Robustness Testing</h1>
+    <p style="color: var(--text-secondary); max-width: 900px;">
+        Simulate real-world transport noise, lossy compression (JPEG), geometric cropping, resizing, and precision LSB bit manipulation.
+        The corrupted image is evaluated using the authentic GhostPixel Receiver verification pipeline to benchmark tamper detection accuracy.
+    </p>
+</div>
+
+<!-- Global Error Notification -->
+<div id="sim-error-alert" class="alert alert-danger hidden"></div>
+
+<div class="grid-2">
+    <!-- Left Column: Image Upload & Corruption Setup -->
+    <div>
+        <form id="corruption-testing-form">
+            <!-- Step 1: Upload Stego Image -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-purple" style="width: 24px; height: 24px; padding: 0; justify-content: center;">1</span>
+                        <span>Upload GhostPixel Stego Image</span>
+                    </div>
+                    <span class="badge badge-cyan" style="font-size: 0.7rem;">PNG Carrier</span>
+                </div>
+
+                <div id="sim-dropzone" class="dropzone">
+                    <svg class="dropzone-icon" style="color: var(--accent-purple);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <div class="dropzone-text">Click or drag &amp; drop stego image here</div>
+                    <div class="dropzone-hint">Upload a valid GhostPixel PNG containing an embedded payload</div>
+                    <input type="file" id="sim-image-input" accept=".png, .bmp, image/png, image/bmp" style="display: none;">
+                </div>
+
+                <!-- Original Image Preview & Stego Envelope Inspection -->
+                <div id="sim-preview-container" class="image-preview-container hidden" style="margin-top: 1rem;">
+                    <img id="sim-preview" class="image-preview" alt="Original Stego Image Preview">
+                </div>
+
+                <div id="sim-inspection-box" class="card mt-2 hidden" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>Stego Envelope Inspection</span>
+                        <span id="insp-badge" class="badge badge-green">GPX1 DETECTED</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.78rem;">
+                        <div><span style="color: var(--text-muted);">Dimensions:</span> <strong id="insp-dims">-</strong></div>
+                        <div><span style="color: var(--text-muted);">Payload Length:</span> <strong id="insp-len">-</strong></div>
+                        <div><span style="color: var(--text-muted);">Payload Pixels:</span> <strong id="insp-px">-</strong></div>
+                        <div><span style="color: var(--text-muted);">Unused Pixels:</span> <strong id="insp-unused">-</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Choose Corruption Technique -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-purple" style="width: 24px; height: 24px; padding: 0; justify-content: center;">2</span>
+                        <span>Select Corruption Technique</span>
+                    </div>
+                    <span class="badge badge-purple" style="font-size: 0.7rem;">5 Methods</span>
+                </div>
+
+                <!-- Technique Selection Radios -->
+                <div class="form-group">
+                    <label class="form-label" style="font-size: 0.85rem;">Simulation Scenario</label>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem;">
+                        <label class="technique-option active" style="padding: 0.75rem; border: 1px solid var(--accent-purple); border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(139, 92, 246, 0.08);">
+                            <input type="radio" name="technique" value="bit_flipping" checked style="margin-top: 3px;">
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">Payload Bit Flipping</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Deliberately inverts specific LSB bits in the GhostPixel binary envelope (ciphertext, auth tag, nonce, salt, or stored hash).</div>
+                            </div>
+                        </label>
+
+                        <label class="technique-option" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(15, 23, 42, 0.4);">
+                            <input type="radio" name="technique" value="random_pixels" style="margin-top: 3px;">
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">Random Pixel Modification</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Randomly alters RGB pixel values at configurable intensity. Can target payload, unused area, or entire image.</div>
+                            </div>
+                        </label>
+
+                        <label class="technique-option" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(15, 23, 42, 0.4);">
+                            <input type="radio" name="technique" value="jpeg_compression" style="margin-top: 3px;">
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">JPEG Lossy Compression</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Applies lossy Discrete Cosine Transform (DCT) quantization at selectable quality (10-95). Simulates social media compression.</div>
+                            </div>
+                        </label>
+
+                        <label class="technique-option" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(15, 23, 42, 0.4);">
+                            <input type="radio" name="technique" value="cropping" style="margin-top: 3px;">
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">Image Cropping</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Removes a configurable percentage of carrier margins (bottom, right, top, or left), testing row stride shift and carrier truncation.</div>
+                            </div>
+                        </label>
+
+                        <label class="technique-option" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(15, 23, 42, 0.4);">
+                            <input type="radio" name="technique" value="resizing" style="margin-top: 3px;">
+                            <div>
+                                <strong style="color: var(--text-primary); font-size: 0.9rem;">Image Resizing (Downscaling)</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Downscales image resolution via bicubic interpolation, recalculating pixel values and destroying LSB integrity.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Dynamic Configuration Panels -->
+                <!-- Panel 1: Bit Flipping Options -->
+                <div id="panel-bit-flipping" class="tech-panel" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; border: 1px solid var(--border-color);">
+                    <div class="form-group mb-2">
+                        <label class="form-label" style="font-size: 0.8rem;">Target Payload Component</label>
+                        <select id="param-target-part" class="form-control" style="font-size: 0.85rem;">
+                            <option value="ciphertext" selected>Ciphertext (Encrypted Message Body)</option>
+                            <option value="tag">128-bit Authentication Tag (AES-GCM Auth)</option>
+                            <option value="nonce">96-bit Nonce / IV</option>
+                            <option value="salt">128-bit PBKDF2 Salt</option>
+                            <option value="stored_hash">256-bit Stored SHA-256 Digest</option>
+                            <option value="header_magic">Header Magic Bytes ('GPX1')</option>
+                            <option value="random">Random Bit Across Payload Envelope</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="form-label" style="font-size: 0.8rem;">Number of Bits to Invert</label>
+                        <select id="param-num-flips" class="form-control" style="font-size: 0.85rem;">
+                            <option value="1" selected>1 Bit (Minimal Single-Bit Tampering)</option>
+                            <option value="2">2 Bits</option>
+                            <option value="5">5 Bits</option>
+                            <option value="10">10 Bits (Heavy Tampering)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Random Pixels Options -->
+                <div id="panel-random-pixels" class="tech-panel hidden" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; border: 1px solid var(--border-color);">
+                    <div class="form-group mb-2">
+                        <label class="form-label" style="font-size: 0.8rem;">Target Region</label>
+                        <select id="param-target-region" class="form-control" style="font-size: 0.85rem;">
+                            <option value="all" selected>Entire Image (Uniform Random Noise)</option>
+                            <option value="payload">Payload Footprint Only (Deliberate Destruction)</option>
+                            <option value="unused">Unused Area Only (Payload Untouched Demonstration)</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                            <span>Corruption Intensity:</span>
+                            <strong id="intensity-val" style="color: var(--accent-cyan);">1.0%</strong>
+                        </div>
+                        <input type="range" id="param-intensity" min="0.1" max="20" step="0.1" value="1.0" class="form-range" style="width: 100%;">
+                    </div>
+                </div>
+
+                <!-- Panel 3: JPEG Compression Options -->
+                <div id="panel-jpeg" class="tech-panel hidden" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; border: 1px solid var(--border-color);">
+                    <div class="form-group mb-0">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                            <span>JPEG Quality Factor:</span>
+                            <strong id="quality-val" style="color: var(--accent-cyan);">75 (Standard Web Quality)</strong>
+                        </div>
+                        <input type="range" id="param-quality" min="10" max="95" step="5" value="75" class="form-range" style="width: 100%;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            Discrete Cosine Transform (DCT) quantization discards fine pixel variations, overwriting LSB bits.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 4: Cropping Options -->
+                <div id="panel-cropping" class="tech-panel hidden" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; border: 1px solid var(--border-color);">
+                    <div class="form-group mb-2">
+                        <label class="form-label" style="font-size: 0.8rem;">Crop Edge</label>
+                        <select id="param-crop-edge" class="form-control" style="font-size: 0.85rem;">
+                            <option value="bottom" selected>Bottom (Removes Bottom Rows)</option>
+                            <option value="right">Right (Alters Width &amp; Destroys Row Alignment)</option>
+                            <option value="top">Top (Destroys Row 0 Header &amp; Signature)</option>
+                            <option value="left">Left (Shifts Columns &amp; Destroys Header)</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                            <span>Removal Percentage:</span>
+                            <strong id="crop-val" style="color: var(--accent-cyan);">15%</strong>
+                        </div>
+                        <input type="range" id="param-percentage" min="5" max="50" step="5" value="15" class="form-range" style="width: 100%;">
+                    </div>
+                </div>
+
+                <!-- Panel 5: Resizing Options -->
+                <div id="panel-resizing" class="tech-panel hidden" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; border: 1px solid var(--border-color);">
+                    <div class="form-group mb-0">
+                        <label class="form-label" style="font-size: 0.8rem;">Downscale Scale Factor</label>
+                        <select id="param-scale-factor" class="form-control" style="font-size: 0.85rem;">
+                            <option value="0.90">90% of original resolution</option>
+                            <option value="0.75" selected>75% of original resolution</option>
+                            <option value="0.50">50% of original resolution (Half Scale)</option>
+                            <option value="0.25">25% of original resolution (Quarter Scale)</option>
+                        </select>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            Bicubic interpolation recalculates all RGB color channels, destroying LSB bit fidelity.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Decryption Password (Optional) -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="badge badge-purple" style="width: 24px; height: 24px; padding: 0; justify-content: center;">3</span>
+                        <span>Receiver Password (Optional)</span>
+                    </div>
+                    <span class="badge badge-purple" style="font-size: 0.7rem;">AES-256-GCM</span>
+                </div>
+
+                <div class="form-group mb-0">
+                    <label class="form-label" for="sim-password" style="font-size: 0.8rem;">
+                        <span>Passphrase for Authenticated Decryption</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Leave empty to test extraction and SHA-256 only</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input type="password" id="sim-password" class="form-control" placeholder="Optional passphrase..." autocomplete="off">
+                        <button type="button" class="input-btn-toggle" data-target="sim-password" title="Show/Hide Password">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button type="button" id="btn-simulate" class="btn btn-primary btn-lg" style="width: 100%;" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                <span>Simulate Corruption &amp; Verify Receiver</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Right Column: Visual Comparison & Real Receiver Verification Scorecard -->
+    <div>
+        <!-- Side-by-Side Visual Comparison Card -->
+        <div id="sim-comparison-card" class="card mb-3 hidden">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                    <span>Carrier Comparison (Original vs. Corrupted)</span>
+                </div>
+                <span id="sim-technique-badge" class="badge badge-purple">TECHNIQUE</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                <!-- Original Image -->
+                <div style="text-align: center; background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>Original Stego</span>
+                        <span id="comp-orig-dims" class="badge badge-cyan">-</span>
+                    </div>
+                    <img id="comp-orig-img" style="max-height: 180px; max-width: 100%; border-radius: 6px; object-fit: contain; background: #000;" alt="Original Stego">
+                </div>
+
+                <!-- Corrupted Image -->
+                <div style="text-align: center; background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>Corrupted Carrier</span>
+                        <span id="comp-corr-dims" class="badge badge-purple">-</span>
+                    </div>
+                    <img id="comp-corr-img" style="max-height: 180px; max-width: 100%; border-radius: 6px; object-fit: contain; background: #000;" alt="Corrupted Carrier">
+                </div>
+            </div>
+
+            <!-- Download and Test in Receiver Buttons -->
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <a id="btn-download-corrupted" href="#" class="btn btn-primary" style="flex: 1; text-align: center; text-decoration: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Download Corrupted Image</span>
+                </a>
+                <a href="{{ url_for('decode_page') }}" class="btn btn-secondary" style="text-decoration: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <span>Open in Receiver Portal</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Receiver Verification Results Card -->
+        <div id="sim-results-card" class="card mb-3 hidden">
+            <div class="card-header">
+                <div class="card-title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Receiver Verification Results</span>
+                </div>
+                <span id="sim-verdict-badge" class="badge badge-green">SUCCESSFUL</span>
+            </div>
+
+            <!-- Overall Result Banner -->
+            <div id="sim-verdict-banner" class="alert alert-success" style="font-weight: 700;"></div>
+
+            <!-- Verification Metric Scorecard Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+                <!-- Metric 1: Extraction -->
+                <div class="integrity-metric-card" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">1. Payload Extraction</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                        <span id="res-extraction-text" style="font-size: 0.9rem; font-weight: 700;">SUCCESS</span>
+                        <span id="res-extraction-badge" class="badge badge-green">PASSED</span>
+                    </div>
+                </div>
+
+                <!-- Metric 2: SHA-256 -->
+                <div class="integrity-metric-card" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">2. SHA-256 Integrity</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                        <span id="res-sha256-text" style="font-size: 0.9rem; font-weight: 700;">VERIFIED</span>
+                        <span id="res-sha256-badge" class="badge badge-green">MATCH</span>
+                    </div>
+                </div>
+
+                <!-- Metric 3: AES-GCM -->
+                <div class="integrity-metric-card" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">3. AES-GCM Authentication</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                        <span id="res-aes-text" style="font-size: 0.9rem; font-weight: 700;">AUTHENTICATED</span>
+                        <span id="res-aes-badge" class="badge badge-green">PASSED</span>
+                    </div>
+                </div>
+
+                <!-- Metric 4: Processing Time -->
+                <div class="integrity-metric-card" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">4. Execution Time</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                        <span id="res-time-text" style="font-size: 0.9rem; font-weight: 700; color: var(--accent-cyan);">0.00 ms</span>
+                        <span class="badge badge-cyan">TIMED</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SHA-256 Digest Side-by-Side Comparison -->
+            <div id="sim-hash-comparison-box" class="card mb-3" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem;">
+                    SHA-256 Payload Digest Comparison
+                </div>
+                <div style="font-size: 0.75rem; font-family: monospace; display: flex; flex-direction: column; gap: 0.4rem;">
+                    <div>
+                        <span style="color: var(--text-muted);">Stored Hash:</span><br>
+                        <span id="res-stored-hash" style="color: var(--accent-cyan); word-break: break-all;">-</span>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted);">Extracted Fresh Hash:</span><br>
+                        <span id="res-calculated-hash" style="color: var(--accent-purple); word-break: break-all;">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recovered Message Card (Rendered ONLY if AES-GCM Authenticated) -->
+            <div id="sim-recovered-card" class="card mb-3 hidden" style="border: 1px solid var(--accent-green);">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Authenticated Recovered Plaintext</span>
+                    </div>
+                    <span class="badge badge-green">100% FIDELITY</span>
+                </div>
+                <div id="sim-recovered-text" style="background: rgba(15, 23, 42, 0.8); padding: 1rem; border-radius: 6px; font-family: monospace; font-size: 0.9rem; color: #fff; white-space: pre-wrap; word-break: break-all;"></div>
+            </div>
+
+            <!-- Plaintext Withheld Alert (Rendered when verification fails) -->
+            <div id="sim-withheld-alert" class="alert alert-warning hidden" style="font-size: 0.85rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span><strong>Security Guarantee:</strong> Plaintext is strictly withheld. Cryptographic authentication or SHA-256 verification failed.</span>
+            </div>
+
+            <!-- Diagnostic Recommendation Banner -->
+            <div id="sim-diagnostic-box" class="card" style="background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border-color); font-size: 0.82rem;">
+                <div style="font-weight: 700; color: var(--text-secondary); margin-bottom: 0.25rem;">Diagnostic Analysis &amp; Finding:</div>
+                <div id="sim-diagnostic-text" style="color: var(--text-muted);">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

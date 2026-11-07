@@ -59,6 +59,11 @@ from backend.integrity import (
     AuthenticationFailureError,
     FormatUnsupportedError
 )
+from backend.corruption import (
+    execute_corruption_and_verification,
+    inspect_stego_layout,
+    CorruptionSimulationError
+)
 from backend.performance import (
     calculate_psnr,
     calculate_ssim,
@@ -81,8 +86,9 @@ STEGO_DIR = os.path.join(UPLOAD_DIR, "stego")
 COVERS_DIR = os.path.join(UPLOAD_DIR, "covers")
 SAMPLES_DIR = os.path.join(UPLOAD_DIR, "samples")
 DIFFS_DIR = os.path.join(UPLOAD_DIR, "diffs")
+CORRUPTED_DIR = os.path.join(UPLOAD_DIR, "corrupted")
 
-for d in (UPLOAD_DIR, STEGO_DIR, COVERS_DIR, SAMPLES_DIR, DIFFS_DIR):
+for d in (UPLOAD_DIR, STEGO_DIR, COVERS_DIR, SAMPLES_DIR, DIFFS_DIR, CORRUPTED_DIR):
     os.makedirs(d, exist_ok=True)
 
 app = Flask(
@@ -104,7 +110,7 @@ def cleanup_old_temporary_files(max_age_seconds: int = 7200):
     Ensures storage does not accumulate indefinitely in production deployments.
     """
     now = time.time()
-    for directory in (STEGO_DIR, COVERS_DIR, DIFFS_DIR):
+    for directory in (STEGO_DIR, COVERS_DIR, DIFFS_DIR, CORRUPTED_DIR):
         try:
             if not os.path.exists(directory):
                 continue
@@ -161,6 +167,12 @@ def encode_page():
 def decode_page():
     """Receiver Module - Decode Message"""
     return render_template("decode.html")
+
+
+@app.route("/corruption-testing")
+def corruption_testing_page():
+    """Corruption Simulation & Receiver Robustness Testing Module"""
+    return render_template("corruption_testing.html")
 
 
 @app.route("/performance")
@@ -691,6 +703,126 @@ def api_verify_integrity():
 
 
 # ==========================================
+# API: CORRUPTION SIMULATION & TESTING
+# ==========================================
+
+@app.route("/api/inspect-stego", methods=["POST"])
+def api_inspect_stego():
+    """
+    Analyzes an uploaded image to determine its steganographic layout,
+    capacity, embedded payload size, and channel offsets.
+    """
+    if "image" not in request.files:
+        return jsonify({"success": False, "error": "No image file provided."}), 400
+
+    file = request.files["image"]
+    try:
+        img_bytes = file.read()
+        pil_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        layout = inspect_stego_layout(pil_img)
+        return jsonify({
+            "success": True,
+            "layout": layout,
+            "dimensions": f"{pil_img.width}x{pil_img.height}",
+            "format": pil_img.format or "PNG"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Failed to inspect image: {str(e)}"}), 400
+
+
+@app.route("/api/simulate-corruption", methods=["POST"])
+def api_simulate_corruption():
+    """
+    Simulates controlled carrier or payload corruption and verifies receiver detection:
+    1. Uploads valid stego PNG.
+    2. Applies selected corruption technique:
+       - Random Pixel Modification (configurable intensity & target region)
+       - JPEG Compression (selectable quality levels 10-95)
+       - Image Cropping (percentage & edge)
+       - Image Resizing (downscale factor)
+       - Payload Bit Flipping (precise LSB bit inversion based on GhostPixel envelope)
+    3. Runs authentic Receiver Transmission Integrity Verification.
+    4. Saves corrupted image copy for side-by-side preview and download.
+    5. Returns genuine cryptographic verification results.
+    """
+    file = request.files.get("image") or request.files.get("stego_image")
+    if not file:
+        return jsonify({"success": False, "error": "No stego image provided for corruption simulation."}), 400
+
+    technique = request.form.get("technique", "bit_flipping")
+    password = request.form.get("password", "").strip() or None
+
+    params = {}
+    try:
+        if "num_flips" in request.form:
+            params["num_flips"] = int(request.form.get("num_flips", 1))
+        if "target_part" in request.form:
+            params["target_part"] = request.form.get("target_part", "ciphertext")
+        if "intensity" in request.form:
+            params["intensity"] = float(request.form.get("intensity", 1.0))
+        if "target_region" in request.form:
+            params["target_region"] = request.form.get("target_region", "all")
+        if "quality" in request.form:
+            params["quality"] = int(request.form.get("quality", 75))
+        if "percentage" in request.form:
+            params["percentage"] = float(request.form.get("percentage", 15.0))
+        if "crop_edge" in request.form:
+            params["crop_edge"] = request.form.get("crop_edge", "bottom")
+        if "scale_factor" in request.form:
+            params["scale_factor"] = float(request.form.get("scale_factor", 0.75))
+    except (ValueError, TypeError) as e:
+        return jsonify({"success": False, "error": f"Invalid simulation parameters: {str(e)}"}), 400
+
+    try:
+        # Load image safely in memory without modifying the original
+        file_bytes = file.read()
+        pil_img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+
+        # Execute corruption and run authentic receiver verification
+        result = execute_corruption_and_verification(
+            image=pil_img,
+            technique=technique,
+            params=params,
+            password=password
+        )
+
+        # Save corrupted image for download and preview
+        corrupted_filename = f"corrupted_{int(time.time())}_{uuid.uuid4().hex[:8]}.png"
+        corrupted_path = os.path.join(CORRUPTED_DIR, corrupted_filename)
+        save_image_as_png(result["corrupted_image"], corrupted_path)
+
+        # Log activity in database
+        log_activity(
+            operation="CORRUPTION_TEST",
+            status="SUCCESS" if result["verification"]["final_result"] == "SUCCESSFUL" else "FLAGGED",
+            image_name=file.filename or "stego.png",
+            message_len=0,
+            payload_size=0,
+            processing_time_ms=result["processing_time_ms"],
+            details=f"Technique: {result['technique']}, Dims: {result['corrupted_dimensions']}, Result: {result['verification']['final_result']}"
+        )
+
+        return jsonify({
+            "success": True,
+            "technique": result["technique"],
+            "technique_key": result["technique_key"],
+            "original_dimensions": result["original_dimensions"],
+            "corrupted_dimensions": result["corrupted_dimensions"],
+            "corruption_metadata": result["corruption_metadata"],
+            "verification": result["verification"],
+            "corrupted_image_url": f"/view/corrupted/{corrupted_filename}",
+            "download_url": f"/download/corrupted/{corrupted_filename}",
+            "corrupted_filename": corrupted_filename,
+            "processing_time_ms": result["processing_time_ms"]
+        })
+
+    except CorruptionSimulationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Simulation execution error: {str(e)}"}), 500
+
+
+# ==========================================
 # API: PERFORMANCE & BENCHMARKING
 # ==========================================
 
@@ -874,6 +1006,26 @@ def view_diff(filename):
     """Serves amplified difference map image inline for steganalysis inspection."""
     safe_filename = os.path.basename(filename)
     filepath = os.path.join(DIFFS_DIR, safe_filename)
+    if not os.path.exists(filepath):
+        abort(404)
+    return send_file(filepath, mimetype="image/png")
+
+
+@app.route("/download/corrupted/<filename>")
+def download_corrupted(filename):
+    """Downloads simulated corrupted image as an attachment."""
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(CORRUPTED_DIR, safe_filename)
+    if not os.path.exists(filepath):
+        abort(404)
+    return send_file(filepath, as_attachment=True, download_name=safe_filename, mimetype="image/png")
+
+
+@app.route("/view/corrupted/<filename>")
+def view_corrupted(filename):
+    """Serves corrupted stego image inline for browser preview."""
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(CORRUPTED_DIR, safe_filename)
     if not os.path.exists(filepath):
         abort(404)
     return send_file(filepath, mimetype="image/png")
